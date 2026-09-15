@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#faf8f3" />
+    <meta
+      name="description"
+      content="محصول فاخر في الطائف — قهوة مختصة، ماتشا وحلا. تصفح المنيو واطلب وتابع تحضير طلبك."
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <title>محصول فاخر — قهوة على ذوقك</title>
+    <link rel="icon" href="assets/logo.png" />
+    <link rel="stylesheet" href="css/system.css" />
+    <link rel="stylesheet" href="css/menu.css" />
+  </head>
+  <body>
+    <a class="skip" href="#menu">انتقل إلى المنيو</a>
+    <header class="topbar wrap">
+      <a href="./" aria-label="محصول فاخر"
+        ><img
+          class="logo"
+          src="assets/logo.png"
+          alt="Luxury Crop"
+          width="165"
+          height="37" /></a
+      ><span class="top-note" id="topNote">قهوة مختصة · الطائف</span>
+      <div class="row">
+        <button id="lang" class="text-btn" aria-label="Change language">
+          EN</button
+        ><button class="icon-btn" id="theme" aria-label="تغيير المظهر"></button
+        ><button
+          class="icon-btn"
+          id="track"
+          aria-label="متابعة الطلب"
+          hidden
+        ></button>
+      </div>
+    </header>
+    <main>
+      <section class="hero wrap">
+        <div class="hero-copy">
+          <span class="eyebrow">GOOD COFFEE. GOOD MOMENTS.</span>
+          <h1 id="heroTitle">مزاجك يبدأ<br />بـ<span>محصول فاخر.</span></h1>
+          <p id="heroDesc">
+            محاصيل نختارها بعناية، وقهوة نحضّرها بشغف.<br />خذ لحظتك، والباقي
+            علينا.
+          </p>
+          <a class="btn" href="#menu" id="explore"
+            >اكتشف المنيو <span>↙</span></a
+          >
+          <div class="hero-foot">
+            <span id="heroFoot">من أول رشفة… إلى آخر لقمة.</span
+            ><span class="fine-line"></span
+            ><span class="eyebrow">EST. IN TAIF</span>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <img
+            src="assets/products/170272.webp"
+            alt="قهوة محصول فاخر المختصة"
+            width="700"
+            height="700"
+            fetchpriority="high"
+          />
+          <div class="image-note">
+            <span class="eyebrow">THE DAILY RITUAL</span
+            ><span id="photoCaption">تفاصيل صغيرة. مذاق يستاهل.</span>
+          </div>
+          <span class="hero-label">SPECIALTY<br />COFFEE & MORE</span>
+        </div>
+      </section>
+      <div class="wrap">
+        <div id="offer" hidden></div>
+        <div id="serviceNotice" class="notice" hidden></div>
+      </div>
+      <section class="catalog wrap" id="menu">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">FIND YOUR FAVORITE</span>
+            <h2 id="menuTitle">على ذوقك.</h2>
+          </div>
+          <span class="muted" id="menuCount"></span>
+        </div>
+        <div class="menu-controls">
+          <div class="search-row">
+            <label class="search-box"
+              ><span id="searchIcon"></span
+              ><input
+                id="search"
+                type="search"
+                placeholder="قهوة، ماتشا، أو شيء حلو؟"
+                aria-label="ابحث في المنيو"
+                autocomplete="off"
+              /><kbd>⌕</kbd></label
+            ><button id="favFilter" class="chip"></button
+            ><select id="sort" class="chip" aria-label="ترتيب الأصناف">
+              <option value="menu">ترتيب المنيو</option>
+              <option value="low">السعر: الأقل أولًا</option>
+              <option value="high">السعر: الأعلى أولًا</option>
+            </select>
+          </div>
+          <nav
+            id="categories"
+            class="categories"
+            aria-label="أقسام المنيو"
+          ></nav>
+        </div>
+        <div class="results-top">
+          <div>
+            <h3 id="categoryTitle"></h3>
+            <p class="muted" id="categoryDesc"></p>
+          </div>
+          <span id="resultCount" class="muted"></span>
+        </div>
+        <div id="products" class="products" aria-live="polite">
+          <div class="empty">جارٍ تجهيز المنيو…</div>
+        </div>
+        <div class="menu-note" id="menuNote">
+          الصور مولّدة للتوضيح؛ قد يختلف التقديم الفعلي. اسأل فريقنا عن مسببات
+          الحساسية.
+        </div>
+      </section>
+      <section class="end-note wrap">
+        <span class="eyebrow">A LITTLE MORE THAN COFFEE</span>
+        <h2 id="endTitle">المذاق يحلّي يومك.<br />ورأيك يحلّي تجربتنا.</h2>
+        <button class="btn outline" id="reviewBtn">شاركنا رأيك</button>
+      </section>
+    </main>
+    <footer class="wrap">
+      <img
+        class="logo"
+        src="assets/logo.png"
+        alt="Luxury Crop"
+        width="165"
+        height="37"
+      />
+      <div id="footerLinks" class="row"></div>
+      <span id="footerText">صُنع للحظاتك الحلوة · محصول فاخر</span>
+    </footer>
+    <div class="cart-dock" id="cartDock" hidden>
+      <button id="openCart">
+        <span class="row"
+          ><span class="cart-count" id="cartCount"></span
+          ><span id="cartLabel">راجع طلبك</span></span
+        ><span class="row"><b id="cartTotal"></b><span>←</span></span>
+      </button>
+    </div>
+    <dialog id="dialog" aria-label="تفاصيل الطلب"></dialog>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="js/menu.js"></script>
+  </body>
+</html>

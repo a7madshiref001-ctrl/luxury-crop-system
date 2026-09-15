@@ -1,0 +1,15 @@
+node_modules/
+.raw/
+*.log
+Thumbs.db
+.DS_Store
+
+# Local Netlify folder
+.netlify
+.runtime/
+.env
+.claude/
+test-results/
+playwright-report/
+assets/products/*.png
+dist-pages/
