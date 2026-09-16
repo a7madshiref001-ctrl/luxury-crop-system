@@ -1,0 +1,152 @@
+/* ============================================================
+   أريبْ — طبقة الأساس: التوكنز + الريست + العناصر المشتركة
+   الهوية: كريمي × بني قهوة × ذهبي  (نفس ألوان منيو أريب الأصلي)
+   ============================================================ */
+
+:root{
+  /* ---- الوضع الفاتح (الافتراضي — زي منيو أريب) ---- */
+  --bg:#F2ECDC;
+  --bg-2:#EBE2CC;
+  --card:#FBF7EC;
+  --card-2:#F4EBD6;
+  --line:rgba(110,75,44,.16);
+  --line-2:rgba(110,75,44,.30);
+  --txt:#33231A;
+  --txt-2:#6B5443;
+  --txt-3:#8A715C;
+
+  /* اللون الأساسي = بني القهوة · الثانوي = الذهبي */
+  --mint:#8A5E33;     --mint-2:#6E4B2C;    --on-p:#F8F2E4;
+  --amber:#B07C2E;    --amber-2:#8E6220;   --on-a:#FFF7E8;
+  --violet:#9A6A4F;
+  --red:#B4453F;      --green:#5A7C46;     --blue:#4B7A93;
+  --gold:#C69868;
+
+  --shadow:0 14px 34px -18px rgba(80,52,28,.34);
+  --shadow-lg:0 26px 60px -26px rgba(80,52,28,.42);
+
+  --r-s:12px; --r-m:18px; --r-l:24px; --r-xl:32px;
+  --wrap:1180px;
+  --ff:"IBM Plex Sans Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --fd:"Aref Ruqaa","IBM Plex Sans Arabic",serif;
+  --fm:"Space Grotesk","IBM Plex Sans Arabic",ui-monospace,monospace;
+}
+
+html[data-t="dark"]{
+  --bg:#161009;
+  --bg-2:#1D140C;
+  --card:#221912;
+  --card-2:#2B2017;
+  --line:rgba(220,180,130,.14);
+  --line-2:rgba(220,180,130,.26);
+  --txt:#F0E6D3;
+  --txt-2:#C6AC8B;
+  --txt-3:#9A805F;
+
+  --mint:#C99C6B;     --mint-2:#A67C50;    --on-p:#1A1108;
+  --amber:#D8B183;    --amber-2:#B48B58;   --on-a:#1A1108;
+  --violet:#C3A184;
+  --red:#E0827D;      --green:#9DC48A;     --blue:#8FB6C9;
+
+  --shadow:0 16px 40px -18px rgba(0,0,0,.66);
+  --shadow-lg:0 28px 64px -24px rgba(0,0,0,.75);
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:
+    radial-gradient(1100px 500px at 85% -5%, var(--bg-2), transparent 60%),
+    radial-gradient(900px 600px at 0% 40%, var(--bg-2), transparent 55%),
+    var(--bg);
+  color:var(--txt);
+  font-family:var(--ff); font-size:15px; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  transition:background .5s ease, color .35s ease;
+}
+
+/* حبيبات خفيفة — نفس لمسة منيو أريب */
+body::after{
+  content:"";position:fixed;inset:0;z-index:200;pointer-events:none;opacity:.045;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
+}
+html[data-t="dark"] body::after{opacity:.07}
+
+img{max-width:100%;display:block}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+a{color:inherit;text-decoration:none}
+::selection{background:var(--mint);color:var(--on-p)}
+
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:var(--txt-3)}
+
+.wrap{max-width:var(--wrap);margin:0 auto;padding:0 16px}
+.mono{font-family:var(--fm);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.disp{font-family:var(--fd)}
+.sp{flex:1}
+.hide{display:none !important}
+
+/* ---------- الكروت ---------- */
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--r-l);
+  padding:18px;
+  box-shadow:var(--shadow);
+}
+.card h3{
+  margin:0 0 3px; font-size:16px; font-weight:700; letter-spacing:-.01em;
+  display:flex; align-items:center; gap:8px;
+}
+.card .sub{font-size:12.5px;color:var(--txt-3);margin-bottom:14px;line-height:1.55}
+
+/* ---------- الأزرار ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px 20px;border-radius:99px;font-weight:700;font-size:14px;
+  transition:transform .16s ease, box-shadow .2s ease, background .2s ease, opacity .2s;
+  border:1px solid transparent; white-space:nowrap;
+}
+.btn:active{transform:scale(.97)}
+.btn-p{background:var(--mint);color:var(--on-p);box-shadow:0 10px 24px -12px rgba(110,75,44,.85)}
+.btn-p:hover{background:var(--mint-2)}
+.btn-a{background:var(--amber);color:var(--on-a)}
+.btn-g{background:var(--card-2);color:var(--txt);border-color:var(--line-2)}
+.btn-g:hover{border-color:var(--txt-3)}
+.btn-s{padding:8px 14px;font-size:12.5px}
+.btn-block{width:100%}
+
+/* ---------- الشيبس ---------- */
+.chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 11px;border-radius:99px;font-size:11.5px;font-weight:700;
+  background:var(--card-2);border:1px solid var(--line);color:var(--txt-2);
+}
+.chip.mint{background:color-mix(in srgb,var(--mint) 14%,transparent);border-color:color-mix(in srgb,var(--mint) 32%,transparent);color:var(--mint-2)}
+.chip.amber{background:color-mix(in srgb,var(--amber) 14%,transparent);border-color:color-mix(in srgb,var(--amber) 32%,transparent);color:var(--amber-2)}
+.chip.red{background:color-mix(in srgb,var(--red) 13%,transparent);border-color:color-mix(in srgb,var(--red) 30%,transparent);color:var(--red)}
+.chip.violet{background:color-mix(in srgb,var(--violet) 13%,transparent);border-color:color-mix(in srgb,var(--violet) 30%,transparent);color:var(--violet)}
+
+/* ---------- الجريد ---------- */
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){ .g3,.g4{grid-template-columns:repeat(2,1fr)} }
+@media(max-width:600px){ .g2,.g3,.g4{grid-template-columns:1fr} }
+
+/* ---------- حركات ---------- */
+@keyframes fade-up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.reveal{opacity:0}
+.reveal.in{animation:fade-up .55s cubic-bezier(.2,.7,.3,1) forwards}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+  .reveal{opacity:1}
+}
