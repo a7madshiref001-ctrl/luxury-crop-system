@@ -53,6 +53,12 @@ body::after{
 [data-theme="dark"] body::after{opacity:.07}
 ::selection{background:var(--br);color:var(--bg)}
 img{display:block;max-width:100%}
+.atlas-frame{position:absolute;inset-inline:0;top:50%;aspect-ratio:1;overflow:hidden;
+  transform:translateY(-50%);backface-visibility:hidden;contain:paint}
+.atlas-sheet{position:absolute!important;max-width:none!important;width:300%!important;height:200%!important;
+  left:var(--atlas-x)!important;top:var(--atlas-y)!important;
+  object-fit:fill!important;transform:none!important}
+.atlas-frame.fly-copy{inset:auto!important;aspect-ratio:auto}
 button,input,textarea{font-family:inherit;font-size:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none}
 a{color:inherit;text-decoration:none}
@@ -87,9 +93,10 @@ svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;
   animation:writeIn 1s cubic-bezier(.65,0,.35,1) .15s forwards}
 .sp-brand{width:min(360px,78vw);height:auto;opacity:0;animation:brandIn 1s cubic-bezier(.65,0,.35,1) .15s forwards}
 @keyframes brandIn{from{opacity:0;transform:translateY(12px);filter:blur(6px)}to{opacity:1;transform:none;filter:blur(0)}}
-.brand-dark{display:none}
-[data-theme="dark"] .brand-light{display:none}
-[data-theme="dark"] .brand-dark{display:block}
+.brand-light{display:block!important}
+.brand-dark{display:none!important}
+[data-theme="dark"] .brand-light{display:none!important}
+[data-theme="dark"] .brand-dark{display:block!important}
 @keyframes writeIn{to{clip-path:inset(-12% -8% -12% -8%);filter:blur(0)}}
 .sp-tag{display:flex;align-items:center;gap:13px;color:var(--mut);
   font-size:13px;letter-spacing:5.5px;font-weight:500;opacity:0;
@@ -238,8 +245,10 @@ main{position:relative;z-index:2}
 .rail-sec.seen .fcard{opacity:1;transform:none}
 .fcard:hover{border-color:var(--gold)}
 .fcard .ph{position:relative;aspect-ratio:1/1;overflow:hidden;background:var(--bg2)}
-.fcard .ph img{width:100%;height:100%;object-fit:cover;transition:transform .8s cubic-bezier(.2,.7,.2,1)}
-.fcard:hover .ph img{transform:scale(1.07)}
+.fcard .ph>img{width:100%;height:100%;object-fit:cover;transition:transform .8s cubic-bezier(.2,.7,.2,1)}
+.fcard .atlas-frame{transition:transform .8s cubic-bezier(.2,.7,.2,1)}
+.fcard:hover .ph>img{transform:scale(1.07)}
+.fcard:hover .atlas-frame{transform:translateY(-50%) scale(1.07)}
 .fcard .bd{padding:11px 13px 13px}
 .fcard b{display:block;font-size:14.5px;font-weight:700}
 .fcard .r{display:flex;align-items:center;justify-content:space-between;margin-top:7px}
@@ -263,8 +272,10 @@ main{position:relative;z-index:2}
 .rail-sec.seen .ccard{opacity:1;transform:none}
 .ccard:hover{border-color:var(--gold)}
 .ccard .ph{position:relative;height:112px;overflow:hidden;background:var(--bg2)}
-.ccard .ph img{width:100%;height:100%;object-fit:cover;transition:transform .8s cubic-bezier(.2,.7,.2,1)}
-.ccard:hover .ph img{transform:scale(1.06)}
+.ccard .ph>img{width:100%;height:100%;object-fit:cover;transition:transform .8s cubic-bezier(.2,.7,.2,1)}
+.ccard .atlas-frame{transition:transform .8s cubic-bezier(.2,.7,.2,1)}
+.ccard:hover .ph>img{transform:scale(1.06)}
+.ccard:hover .atlas-frame{transform:translateY(-50%) scale(1.06)}
 .ccard .ph::after{content:"";position:absolute;inset:0;
   background:linear-gradient(to top,color-mix(in srgb,var(--card) 92%,transparent),transparent 62%)}
 .save{position:absolute;top:10px;left:10px;z-index:2;font-size:11px;font-weight:700;
@@ -315,22 +326,25 @@ section.seen .orn{transform:scaleX(1)}
   opacity:0;transform:translateY(24px);
   transition:opacity .7s ease calc(var(--i)*55ms),
     transform .7s cubic-bezier(.2,.7,.2,1) calc(var(--i)*55ms),
-    box-shadow .35s ease,border-color .35s ease,background .5s ease}
+    box-shadow .35s ease,border-color .35s ease,background .5s ease;
+  contain:layout paint style}
 .card.in{opacity:1;transform:translateY(0)}
 @media(hover:hover){
   .card:hover{box-shadow:var(--shadow);border-color:var(--gold);transform:translateY(-3px)!important;
     transition:transform .3s cubic-bezier(.34,1.56,.64,1),box-shadow .3s,border-color .3s}
-  .card:hover .thumb img{transform:scale(1.08)}
+  .card:hover .thumb>img{transform:scale(1.08)}
+  .card:hover .atlas-frame{transform:translateY(-50%) scale(1.08)}
 }
 .thumb{flex:0 0 auto;width:74px;height:74px;border-radius:16px;overflow:hidden;
   background:var(--bg2);border:1px solid var(--line);position:relative}
-.thumb img{width:100%;height:100%;object-fit:cover;transition:transform .7s cubic-bezier(.2,.7,.2,1)}
+.thumb>img{width:100%;height:100%;object-fit:cover;transition:transform .7s cubic-bezier(.2,.7,.2,1)}
+.thumb .atlas-frame{transition:transform .7s cubic-bezier(.2,.7,.2,1)}
 .card .txt{flex:1;min-width:0}
 .card h3{font-size:16px;font-weight:700;display:flex;align-items:center;gap:7px;flex-wrap:wrap;line-height:1.6}
 .card p{font-size:12px;color:var(--mut);margin-top:1px;font-weight:400;line-height:1.65}
 .card .side{display:flex;flex-direction:column;align-items:center;gap:7px;flex:0 0 auto}
 .card.out{opacity:.55}
-.card.out .thumb img{filter:grayscale(1)}
+.card.out .thumb>img,.card.out .thumb .atlas-frame{filter:grayscale(1)}
 
 .price{display:flex;align-items:center;gap:4px;font-weight:700;color:var(--deep);
   font-size:19px;font-variant-numeric:tabular-nums;line-height:1}
@@ -444,7 +458,7 @@ footer small{display:block;margin-top:24px;font-size:11px;opacity:.75}
 
 .sh-photo{position:relative;margin:0 -20px 14px;overflow:hidden;aspect-ratio:16/10;
   background:var(--bg2);border-radius:22px 22px 0 0}
-.sh-photo img{width:100%;height:100%;object-fit:cover}
+.sh-photo>img{width:100%;height:100%;object-fit:cover}
 .sh-photo::after{content:"";position:absolute;inset:0;
   background:linear-gradient(to top,var(--card),transparent 46%)}
 .sh-top{display:flex;align-items:flex-start;gap:12px;margin-top:-6px}
@@ -561,6 +575,20 @@ footer small{display:block;margin-top:24px;font-size:11px;opacity:.75}
 
 /* ================= الانتقال بين الثيمات ================= */
 ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+
+/* أجهزة الذاكرة والمعالجة المحدودة: نفس الحركة بتكلفة رسم أقل */
+.low-power body::after{opacity:.025}
+.low-power #nav{backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.low-power .bean svg{animation-duration:9s}
+.low-power .steam path{animation-duration:4.2s}
+.low-power .tag.hot{animation-duration:4s}
+.low-power .wordmark{will-change:auto}
+
+@media(max-width:520px){
+  :root{--shadow:0 12px 26px -16px rgba(80,52,28,.24);--shadow-lg:0 22px 48px -24px rgba(80,52,28,.38)}
+  [data-theme="dark"]{--shadow:0 12px 26px -16px rgba(0,0,0,.56);--shadow-lg:0 22px 48px -24px rgba(0,0,0,.68)}
+  #nav{backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}

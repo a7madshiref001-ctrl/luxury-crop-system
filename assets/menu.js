@@ -7,12 +7,33 @@
 
   var M = w.MENU, S = w.SALES, F = w.NS;
   var CUR = M.brand.currency || "ر.س";
-  var IMG = "assets/img/items/";
   var $ = function (s) { return d.querySelector(s); };
   var $$ = function (s) { return [].slice.call(d.querySelectorAll(s)); };
   var esc = function (s) { return F.esc(s); };
 
   var cart = [], sel = null, offer = null, mode = null, fee = 0, stars = 0;
+  var LOW_POWER = !!(
+    matchMedia("(prefers-reduced-motion: reduce)").matches ||
+    (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+    (navigator.deviceMemory && navigator.deviceMemory <= 4)
+  );
+  var IMAGE_MAP = {};
+  (function indexImages() {
+    var keys = [];
+    M.sections.forEach(function (section) {
+      (section.cats || []).forEach(function (cat) {
+        (cat.items || []).forEach(function (item) { keys.push(item.k); });
+      });
+    });
+    keys.forEach(function (key, index) {
+      IMAGE_MAP[key] = {
+        src: "assets/img/atlases/products-" + String(Math.floor(index / 6) + 1).padStart(2, "0") + ".webp",
+        x: -(index % 3) * 100 + "%",
+        y: -Math.floor(index % 6 / 3) * 100 + "%"
+      };
+    });
+  })();
+  if (LOW_POWER) d.documentElement.classList.add("low-power");
 
   /* ================= أيقونات ================= */
   var I = {
@@ -52,9 +73,11 @@
   /* ================= صور ================= */
   function photo(k, cls, alt, inner) {
     inner = inner || "";
-    if (!k) return '<div class="' + cls + ' noimg">' + inner + '</div>';
-    return '<div class="' + cls + '"><img loading="lazy" decoding="async" src="' + IMG + k + '.jpg" alt="' + esc(alt || "") +
-      '" onerror="this.parentNode.classList.add(\'noimg\');this.remove()">' + inner + '</div>';
+    var image = IMAGE_MAP[k];
+    if (!image) return '<div class="' + cls + ' noimg">' + inner + '</div>';
+    return '<div class="' + cls + '"><span class="atlas-frame" style="--atlas-x:' + image.x + ';--atlas-y:' + image.y + '">' +
+      '<img class="atlas-sheet" loading="lazy" decoding="async" width="1200" height="800" src="' + image.src + '" alt="' + esc(alt || "") +
+      '" onerror="this.parentNode.parentNode.classList.add(\'noimg\');this.parentNode.remove()"></span>' + inner + '</div>';
   }
   function keyOf(name) { var r = F.byName(name); return r ? r.raw.k : ""; }
 
@@ -131,7 +154,9 @@
   var beanEls = [];
   function beans() {
     var B = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 2.6c4.6 0 7.4 3.8 7.4 9.4s-2.8 9.4-7.4 9.4-7.4-3.8-7.4-9.4S7.4 2.6 12 2.6z"/><path d="M12 2.6c2.8 5.6-2.8 13.2 0 18.8"/></svg>';
-    [[8, "6%"], [78, "12%"], [14, "34%"], [86, "46%"], [6, "64%"], [80, "78%"]].forEach(function (p, i) {
+    var positions = [[8, "6%"], [78, "12%"], [14, "34%"], [86, "46%"], [6, "64%"], [80, "78%"]];
+    if (LOW_POWER) positions = [positions[0], positions[3], positions[5]];
+    positions.forEach(function (p, i) {
       var el = d.createElement("div");
       el.className = "bean"; el.style.left = p[0] + "%"; el.style.top = p[1];
       el.style.setProperty("--t", (6 + i * 1.3) + "s");
@@ -323,11 +348,11 @@
         var y = scrollY, h = d.documentElement.scrollHeight - innerHeight;
         pg.style.transform = "scaleX(" + (h > 0 ? Math.min(1, y / h) : 0) + ")";
         top.classList.toggle("show", y > 600);
-        if (y < innerHeight) {
+        if (!LOW_POWER && y < innerHeight) {
           if (wm) { wm.style.transform = "translateY(" + y * .2 + "px)"; wm.style.opacity = Math.max(0, 1 - y / (innerHeight * .55)); }
           if (art) { art.style.transform = "translateY(" + y * -.06 + "px)"; art.style.opacity = Math.max(0, 1 - y / (innerHeight * .7)); }
         }
-        beanEls.forEach(function (b) { b.style.transform = "translate3d(0," + y * b.dataset.speed + "px,0)"; });
+        if (!LOW_POWER) beanEls.forEach(function (b) { b.style.transform = "translate3d(0," + y * b.dataset.speed + "px,0)"; });
         ticking = false;
       });
     }, { passive: true });
@@ -522,13 +547,14 @@
   /* الصورة تطير للشريط */
   function fly(el) {
     var img = el.closest(".card,.fcard,.ccard");
-    img = img && img.querySelector("img");
+    img = img && img.querySelector(".atlas-frame,img");
     if (!img) return;
     var r = img.getBoundingClientRect(), bar = $(".bar-in").getBoundingClientRect();
-    var c = img.cloneNode();
-    c.style.cssText = "position:fixed;z-index:190;border-radius:16px;object-fit:cover;pointer-events:none;" +
+    var c = img.cloneNode(true);
+    c.classList.add("fly-copy");
+    c.style.cssText += ";position:fixed;z-index:190;border-radius:16px;object-fit:cover;pointer-events:none;" +
       "left:" + r.left + "px;top:" + r.top + "px;width:" + r.width + "px;height:" + r.height + "px;" +
-      "transition:all .7s cubic-bezier(.5,-0.1,.3,1);opacity:.95";
+      "transition:all .7s cubic-bezier(.5,-0.1,.3,1);opacity:.95;transform:none;overflow:hidden";
     d.body.appendChild(c);
     requestAnimationFrame(function () {
       c.style.left = (bar.left + bar.width / 2 - 14) + "px";
