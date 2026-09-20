@@ -66,6 +66,10 @@ body{background:var(--bg)}
   font-size:12.5px;font-weight:700;outline:none;
 }
 #page{padding:20px 22px 0}
+.local-notice{display:flex;align-items:flex-start;gap:10px;padding:12px 15px;margin-bottom:16px;
+  border:1px solid color-mix(in srgb,var(--amber) 32%,transparent);border-radius:14px;
+  background:color-mix(in srgb,var(--amber) 9%,var(--card));color:var(--txt-2);font-size:12px;line-height:1.6}
+.local-notice b{color:var(--amber);white-space:nowrap}
 .pane{display:none;animation:fade-up .35s cubic-bezier(.2,.8,.3,1)}
 .pane.on{display:block}
 
@@ -104,7 +108,7 @@ body{background:var(--bg)}
 .al{
   display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:var(--r-m);
   background:var(--card);border:1px solid var(--line);margin-bottom:9px;cursor:pointer;
-  transition:.18s;
+  transition:.18s;width:100%;text-align:start;
 }
 .al:hover{border-color:var(--line-2);transform:translateX(-3px)}
 .al .e{font-size:19px;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none;background:var(--card-2)}
@@ -223,6 +227,7 @@ body{background:var(--bg)}
   border:1px solid var(--line);outline:none;font-size:13.5px;margin-bottom:10px;
 }
 .sfld:focus{border-color:var(--mint)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
 
 .demo-chip{
   display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;

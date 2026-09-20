@@ -13,7 +13,7 @@
     cus: "areeb.customers.v1",
     loy: "areeb.loyalty.v1",
     ctl: "areeb.control.v1",
-    seed: "areeb.seeded.v2",
+    seed: "areeb.seeded.v3",
     cart: "areeb.cart.v1",
     cid: "areeb.cid.v1",
     theme: "areeb.theme.v1",
@@ -195,11 +195,12 @@
 
           if (rnd() < 0.8) {
             var total = lines.reduce(function (a, l) { return a + l.p * l.q; }, 0);
+            var orderMode = w.SALES.order.modes[Math.floor(rnd() * w.SALES.order.modes.length)] || "الطاولة";
             orders.push({
               id: "D" + (ts % 100000), t: ts + 260000, lines: lines, total: total,
               up: upRev, addon: adRev,
-              mode: w.SALES.order.modes[rnd() < .62 ? 0 : (rnd() < .62 ? 1 : 2)],
-              table: 1 + Math.floor(rnd() * w.SALES.order.tables),
+              mode: orderMode,
+              table: orderMode === "الطاولة" ? 1 + Math.floor(rnd() * w.SALES.order.tables) : null,
               demo: 1
             });
 
@@ -265,22 +266,43 @@
     return row;
   }
   function pushOrder(order) {
-    var o = get(K.ord, []); o.push(order); set(K.ord, o);
+    var o = get(K.ord, []); if (!Array.isArray(o)) o = [];
+    o.push(order); if (o.length > 5000) o = o.slice(-5000); set(K.ord, o);
     track("order", { v: order.total, up: order.up, ad: order.addon });
     emit("order", order);
   }
-  function pushReview(r) { var a = get(K.rev, []); a.push(r); set(K.rev, a); emit("review", r); }
-  function pushCustomer(c) { var a = get(K.cus, []); a.push(c); set(K.cus, a); emit("customer", c); }
+  function pushReview(r) {
+    var a = get(K.rev, []); if (!Array.isArray(a)) a = [];
+    a.push(r); if (a.length > 5000) a = a.slice(-5000); set(K.rev, a); emit("review", r);
+  }
+  function pushCustomer(c) {
+    var a = get(K.cus, []); if (!Array.isArray(a)) a = [];
+    a.push(c); if (a.length > 5000) a = a.slice(-5000); set(K.cus, a); emit("customer", c);
+  }
 
   /* ---------------- تحكّم الأونر ---------------- */
   function control() {
-    return Object.assign({
+    var c = Object.assign({
       soldOut: [], prices: {}, pinned: [],
       offerOn: null, offerTitle: "", offerBody: "",
       hidden: []
     }, get(K.ctl, {}));
+    c.soldOut = Array.isArray(c.soldOut) ? c.soldOut.filter(function (x) { return typeof x === "string"; }).slice(0, 500) : [];
+    c.pinned = Array.isArray(c.pinned) ? c.pinned.filter(function (x) { return typeof x === "string"; }).slice(0, 500) : [];
+    c.hidden = Array.isArray(c.hidden) ? c.hidden.filter(function (x) { return typeof x === "string"; }).slice(0, 500) : [];
+    if (!c.prices || typeof c.prices !== "object" || Array.isArray(c.prices)) c.prices = {};
+    Object.keys(c.prices).forEach(function (k) {
+      var v = Number(c.prices[k]);
+      if (!Number.isFinite(v) || v < 0 || v > 10000) delete c.prices[k]; else c.prices[k] = Math.round(v);
+    });
+    c.offerOn = c.offerOn == null ? null : !!c.offerOn;
+    c.offerTitle = String(c.offerTitle || "").slice(0, 60);
+    c.offerBody = String(c.offerBody || "").slice(0, 120);
+    return c;
   }
-  function saveControl(c) { set(K.ctl, c); emit("control", c); }
+  function saveControl(c) {
+    set(K.ctl, c); var safe = control(); set(K.ctl, safe); emit("control", safe);
+  }
 
   /* ---------------- التجميع ---------------- */
   /* days = طول الفترة · back = ارجع كام فترة لورا (1 = الفترة السابقة للمقارنة) */

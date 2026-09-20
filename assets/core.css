@@ -13,13 +13,13 @@
   --line-2:rgba(110,75,44,.30);
   --txt:#33231A;
   --txt-2:#6B5443;
-  --txt-3:#8A715C;
+  --txt-3:#725A46;
 
   /* اللون الأساسي = بني القهوة · الثانوي = الذهبي */
-  --mint:#8A5E33;     --mint-2:#6E4B2C;    --on-p:#F8F2E4;
-  --amber:#B07C2E;    --amber-2:#8E6220;   --on-a:#FFF7E8;
+  --mint:#754A24;     --mint-2:#6E4B2C;    --on-p:#F8F2E4;
+  --amber:#855414;    --amber-2:#70440F;   --on-a:#FFF7E8;
   --violet:#9A6A4F;
-  --red:#B4453F;      --green:#5A7C46;     --blue:#4B7A93;
+  --red:#9D3832;      --green:#5A7C46;     --blue:#4B7A93;
   --gold:#C69868;
 
   --shadow:0 14px 34px -18px rgba(80,52,28,.34);
@@ -99,7 +99,7 @@ a{color:inherit;text-decoration:none}
   padding:18px;
   box-shadow:var(--shadow);
 }
-.card h3{
+.card h2,.card h3{
   margin:0 0 3px; font-size:16px; font-weight:700; letter-spacing:-.01em;
   display:flex; align-items:center; gap:8px;
 }

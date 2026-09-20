@@ -61,7 +61,11 @@ img{display:block;max-width:100%}
 .atlas-frame.fly-copy{inset:auto!important;aspect-ratio:auto}
 button,input,textarea{font-family:inherit;font-size:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none}
+button:disabled{cursor:not-allowed;opacity:.55}
 a{color:inherit;text-decoration:none}
+.nav-ico:focus-visible,.pill:focus-visible,.btn-ghost:focus-visible,.btn-main:focus-visible,
+.btn-mini:focus-visible,.sheet-close:focus-visible,.qty button:focus-visible,.seg button:focus-visible,
+.stars button:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 .hide{display:none!important}
 ::-webkit-scrollbar{width:8px;height:8px}
 ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:99px}
@@ -262,7 +266,7 @@ main{position:relative;z-index:2}
 .ccard p{font-size:12px;color:var(--mut);margin-top:2px;line-height:1.6}
 .ccard .r{display:flex;align-items:center;justify-content:space-between;margin-top:10px}
 .was{font-size:12px;color:var(--mut);text-decoration:line-through;margin-inline-start:7px;opacity:.8}
-.btn-mini{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:100px;
+.btn-mini{display:inline-flex;align-items:center;gap:5px;padding:9px 14px;min-height:40px;border-radius:100px;
   background:linear-gradient(135deg,var(--br),var(--deep));color:var(--on);
   font-size:12.5px;font-weight:700;box-shadow:0 8px 18px -9px rgba(110,75,44,.75);
   transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
@@ -270,7 +274,7 @@ main{position:relative;z-index:2}
 
 /* ================= الأقسام ================= */
 #menu,#qres{max-width:900px;margin:0 auto;padding:6px 18px 30px}
-section.sec{padding:36px 0 6px;scroll-margin-top:78px}
+section.sec{padding:36px 0 6px;scroll-margin-top:78px;content-visibility:auto;contain-intrinsic-size:720px}
 .sec-head{display:flex;align-items:center;gap:14px}
 .sec-icon{flex:0 0 auto;width:52px;height:52px;border-radius:18px;display:grid;place-items:center;
   color:var(--br);background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
@@ -329,7 +333,7 @@ section.seen .orn{transform:scaleX(1)}
 .sar{width:14px;height:14px;color:var(--br);opacity:.85;fill:none;flex:0 0 auto}
 .sar path{fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round}
 .from{font-size:10.5px;color:var(--mut);font-weight:500}
-.add{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+.add{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;
   background:linear-gradient(135deg,var(--br),var(--deep));color:var(--on);
   box-shadow:0 8px 18px -9px rgba(110,75,44,.75);
   transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
@@ -422,6 +426,9 @@ footer small{display:block;margin-top:24px;font-size:11px;opacity:.75}
   box-shadow:0 -20px 60px -20px rgba(60,38,18,.5);
   transform:translateY(100%);transition:transform .5s cubic-bezier(.2,.8,.2,1)}
 .sheet.on .pn{transform:none}
+.sheet-close{position:absolute;top:12px;inset-inline-end:14px;z-index:3;width:38px;height:38px;
+  border-radius:50%;display:grid;place-items:center;background:var(--card2);border:1px solid var(--line);
+  color:var(--mut2);font-size:25px;line-height:1;box-shadow:var(--shadow)}
 @media(min-width:700px){
   .sheet .pn{max-width:540px;margin:0 auto;bottom:20px;border-radius:28px;max-height:88svh}
 }

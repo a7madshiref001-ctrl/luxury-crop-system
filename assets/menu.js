@@ -11,7 +11,7 @@
   var $$ = function (s) { return [].slice.call(d.querySelectorAll(s)); };
   var esc = function (s) { return F.esc(s); };
 
-  var cart = [], sel = null, offer = null, mode = null, fee = 0, stars = 0;
+  var cart = [], sel = null, offer = null, mode = null, fee = 0, stars = 0, lastFocus = null;
   var LOW_POWER = !!(
     matchMedia("(prefers-reduced-motion: reduce)").matches ||
     (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
@@ -77,7 +77,7 @@
     if (!image) return '<div class="' + cls + ' noimg">' + inner + '</div>';
     return '<div class="' + cls + '"><span class="atlas-frame" style="--atlas-x:' + image.x + ';--atlas-y:' + image.y + '">' +
       '<img class="atlas-sheet" loading="lazy" decoding="async" width="1200" height="800" src="' + image.src + '" alt="' + esc(alt || "") +
-      '" onerror="this.parentNode.parentNode.classList.add(\'noimg\');this.parentNode.remove()"></span>' + inner + '</div>';
+      '"></span>' + inner + '</div>';
   }
   function keyOf(name) { var r = F.byName(name); return r ? r.raw.k : ""; }
 
@@ -98,7 +98,7 @@
     restoreCart();
 
     F.track("visit", { ref: d.referrer || "" });
-    splash(); beans(); scrollFx(); wire();
+    beans(); scrollFx(); wire();
 
     F.onMsg(function (m) {
       if (m.type === "control") {
@@ -106,20 +106,6 @@
       }
     });
     setInterval(tickOffer, 1000);
-  }
-
-  /* ================= السبلاش ================= */
-  function splash() {
-    var el = $("#splash"), done = false;
-    function bye() {
-      if (done) return; done = true;
-      el.classList.add("bye");
-      d.body.classList.remove("lock");
-      setTimeout(function () { d.body.classList.add("go"); }, 30);
-      setTimeout(function () { el.remove(); }, 950);
-    }
-    el.addEventListener("click", bye);
-    setTimeout(bye, matchMedia("(prefers-reduced-motion: reduce)").matches ? 250 : 2500);
   }
 
   /* ================= الثيم ================= */
@@ -277,8 +263,8 @@
   function renderFooter() {
     var b = M.brand, h = "";
     if (b.phone) h += '<a href="tel:' + b.phone + '">' + IC.phone + ' اتصل فينا</a>';
-    if (b.maps) h += '<a href="' + b.maps + '" target="_blank" rel="noopener">' + IC.pin + ' الموقع</a>';
-    if (b.instagram) h += '<a href="' + b.instagram + '" target="_blank" rel="noopener">' + IC.ig + ' luxurycrop1</a>';
+    if (b.maps) h += '<a href="' + b.maps + '" target="_blank" rel="noopener noreferrer">' + IC.pin + ' الموقع</a>';
+    if (b.instagram) h += '<a href="' + b.instagram + '" target="_blank" rel="noopener noreferrer">' + IC.ig + ' luxurycrop1</a>';
     $("#fLinks").innerHTML = h;
   }
 
@@ -374,11 +360,15 @@
   function openSearch() {
     var nav = $("#nav");
     nav.classList.add("searching");
+    $("#searchBtn").setAttribute("aria-expanded", "true");
+    $("#searchRow").setAttribute("aria-hidden", "false");
     if (!nav.classList.contains("stuck")) scrollTo({ top: nav.offsetTop, behavior: "smooth" });
     setTimeout(function () { $("#q").focus(); }, 140);
   }
   function closeSearch() {
     $("#nav").classList.remove("searching");
+    $("#searchBtn").setAttribute("aria-expanded", "false");
+    $("#searchRow").setAttribute("aria-hidden", "true");
     $("#q").value = ""; runSearch("");
   }
   function runSearch(v) {
@@ -456,7 +446,7 @@
       }).join("") + '</div></div>';
 
     h += '<div class="sh-sec"><div class="lb">' + IC.note + 'ملاحظة للباريستا</div>' +
-      '<input class="fld" id="nt" placeholder="مثلاً: بدون سكر" value="' + esc(sel.note) + '"></div>';
+      '<input class="fld" id="nt" maxlength="120" placeholder="مثلاً: بدون سكر" value="' + esc(sel.note) + '"></div>';
 
     h += '<div class="sh-sec"><div class="lb">' + IC.bag + 'الكمية</div><div class="qty">' +
       '<button data-q="-1">' + IC.minus + '</button><b>' + sel.qty + '</b><button data-q="1">' + IC.plus + '</button></div></div>';
@@ -535,8 +525,18 @@
     toast("أُضيف الكومبو — وفّرت " + (c.was - c.p) + " " + CUR);
   }
   function saveCart() { F.set(F.K.cart, cart); }
-  function restoreCart() { cart = F.get(F.K.cart, []) || []; syncBar(); }
-  function sub() { return cart.reduce(function (a, l) { return a + l.p * l.q; }, 0); }
+  function restoreCart() {
+    var saved = F.get(F.K.cart, []);
+    cart = (Array.isArray(saved) ? saved : []).filter(function (l) {
+      return l && typeof l.n === "string" && l.n.length <= 180 &&
+        Number.isFinite(Number(l.p)) && Number(l.p) >= 0 && Number(l.p) <= 10000 &&
+        Number.isInteger(Number(l.q)) && Number(l.q) >= 1 && Number(l.q) <= 99;
+    }).slice(0, 100).map(function (l) {
+      return Object.assign({}, l, { p: Number(l.p), q: Number(l.q), note: String(l.note || "").slice(0, 120) });
+    });
+    saveCart(); syncBar();
+  }
+  function sub() { return cart.reduce(function (a, l) { return a + Number(l.p) * Number(l.q); }, 0); }
   function syncBar(bump) {
     var n = cart.reduce(function (a, l) { return a + l.q; }, 0);
     $("#barT").textContent = F.money(sub());
@@ -600,17 +600,20 @@
     }
 
     var ICM = [IC.table, IC.bag, IC.car];
-    h += '<div class="sh-sec"><div class="lb">' + IC.pin + 'الطلب وين؟</div><div class="seg" id="modes">' +
-      S.order.modes.map(function (m, i) {
-        return '<button data-mode="' + esc(m) + '" class="' + (i === 0 ? "on" : "") + '">' + (ICM[i] || "") + esc(m) + '</button>';
-      }).join("") + '</div></div>';
+    if (S.order.modes.length > 1) {
+      h += '<div class="sh-sec"><div class="lb">' + IC.pin + 'الطلب وين؟</div><div class="seg" id="modes">' +
+        S.order.modes.map(function (m, i) {
+          return '<button data-mode="' + esc(m) + '" class="' + (i === 0 ? "on" : "") + '">' + (ICM[i] || "") + esc(m) + '</button>';
+        }).join("") + '</div></div>';
+    }
 
     h += '<div class="sh-sec" id="tblWrap"><div class="lb">' + IC.table + 'رقم الطاولة</div>' +
-      '<input class="fld" id="tbl" type="number" inputmode="numeric" min="1" max="' + S.order.tables + '" placeholder="مثلاً 5"></div>';
+      '<input class="fld" id="tbl" type="number" inputmode="numeric" min="1" max="' + S.order.tables + '" required placeholder="من 1 إلى ' + S.order.tables + '"></div>';
 
     h += '<div class="sh-sec"><div class="lb">' + IC.phone + 'اسمك ورقمك</div>' +
-      '<input class="fld" id="cn" placeholder="الاسم" style="margin-bottom:8px">' +
-      '<input class="fld" id="cp" type="tel" inputmode="tel" placeholder="05xxxxxxxx"></div>';
+      '<input class="fld" id="cn" autocomplete="name" maxlength="60" placeholder="الاسم (اختياري)" style="margin-bottom:8px">' +
+      '<input class="fld" id="cp" type="tel" inputmode="tel" autocomplete="tel" maxlength="10" pattern="05[0-9]{8}" placeholder="05xxxxxxxx (اختياري)">' +
+      '<div class="note-l">بياناتك اختيارية وتُحفظ على هذا الجهاز فقط.</div></div>';
 
     if (S.loyalty.on) {
       var L = F.get(F.K.loy, { n: 0 });
@@ -625,8 +628,12 @@
       '<div class="tot hide" id="feeRow"><span>توصيل</span><b>' + S.order.deliveryFee + SAR + '</b></div>' +
       '<div class="tot big"><span>الإجمالي</span><b id="grand">' + F.money(t) + SAR + '</b></div></div>';
 
-    h += '<div class="cta-wrap"><button class="btn-main" data-act="send">' + IC.wa + 'أرسل الطلب على واتساب</button>' +
-      '<div class="note-l" style="text-align:center">بينفتح واتساب والطلب مكتوب — ترسله وخلاص</div></div>';
+    var ready = whatsappReady(S.order.whatsapp);
+    h += '<div class="cta-wrap"><button class="btn-main" data-act="send"' + (ready ? "" : " disabled") + '>' + IC.wa +
+      (ready ? 'أرسل الطلب على واتساب' : 'الطلب غير متاح مؤقتًا') + '</button>' +
+      '<div class="note-l" style="text-align:center">' + (ready
+        ? 'بينفتح واتساب والطلب مكتوب — ترسله وخلاص'
+        : 'رقم استقبال الطلبات لم يتم ضبطه بعد. تواصل مع إدارة المقهى.') + '</div></div>';
     return h;
   }
   function setMode(btn) {
@@ -659,7 +666,16 @@
     var tbl = $("#tbl") ? $("#tbl").value : "";
     var nm = $("#cn") ? $("#cn").value.trim() : "";
     var ph = $("#cp") ? $("#cp").value.trim() : "";
-    if (m === "الطاولة" && !tbl) { toast("اكتب رقم الطاولة"); $("#tbl").focus(); return; }
+    if (!whatsappReady(S.order.whatsapp)) { toast("رقم استقبال الطلبات غير مضبوط"); return; }
+    if (m === "الطاولة") {
+      var tableNo = Number(tbl);
+      if (!Number.isInteger(tableNo) || tableNo < 1 || tableNo > S.order.tables) {
+        toast("اكتب رقم طاولة صحيح من 1 إلى " + S.order.tables); $("#tbl").focus(); return;
+      }
+      tbl = String(tableNo);
+    }
+    ph = ph.replace(/\s+/g, "");
+    if (ph && !/^05\d{8}$/.test(ph)) { toast("اكتب رقم جوال صحيح يبدأ بـ 05"); $("#cp").focus(); return; }
 
     var total = t + fee;
     var up = cart.filter(function (l) { return l.up; }).reduce(function (a, l) { return a + l.p * l.q; }, 0);
@@ -686,7 +702,7 @@
       L.n = (L.n + 1) % (S.loyalty.goal + 1);
       F.set(F.K.loy, L);
     }
-    w.open("https://wa.me/" + S.order.whatsapp + "?text=" + encodeURIComponent(txt), "_blank");
+    openExternal("https://wa.me/" + S.order.whatsapp + "?text=" + encodeURIComponent(txt));
     cart = []; saveCart(); syncBar(); closeSheet("shCart");
     setTimeout(openReview, 1300);
   }
@@ -715,15 +731,17 @@
   function toGoogle() {
     F.pushReview({ t: Date.now(), stars: stars, note: "", sent: "google" });
     F.track("review", { stars: stars, sent: "google" });
-    w.open(S.review.googleUrl, "_blank");
+    openExternal(S.review.googleUrl);
     closeSheet("shRev"); coupon();
   }
   function sendLow() {
     var n = $("#rvNote") ? $("#rvNote").value.trim() : "";
     F.pushReview({ t: Date.now(), stars: stars, note: n, sent: "owner" });
     F.track("review", { stars: stars, sent: "owner" });
-    w.open("https://wa.me/" + S.review.ownerWhatsapp + "?text=" +
-      encodeURIComponent("تقييم " + stars + "/5 من منيو " + M.brand.nameAr + ": " + n), "_blank");
+    if (whatsappReady(S.review.ownerWhatsapp)) {
+      openExternal("https://wa.me/" + S.review.ownerWhatsapp + "?text=" +
+        encodeURIComponent("تقييم " + stars + "/5 من منيو " + M.brand.nameAr + ": " + n));
+    }
     closeSheet("shRev"); coupon();
   }
   function coupon() {
@@ -733,12 +751,27 @@
 
   /* ================= الشيتات ================= */
   function openSheet(id) {
-    $("#" + id).classList.add("on");
+    var sheet = $("#" + id);
+    lastFocus = d.activeElement;
+    sheet.classList.add("on");
+    sheet.setAttribute("aria-hidden", "false");
     d.body.classList.add("sheet-open");
+    setTimeout(function () { var x = sheet.querySelector(".sheet-close"); if (x) x.focus(); }, 30);
   }
   function closeSheet(id) {
-    $("#" + id).classList.remove("on");
+    var sheet = $("#" + id);
+    sheet.classList.remove("on");
+    sheet.setAttribute("aria-hidden", "true");
     if (!$(".sheet.on")) d.body.classList.remove("sheet-open");
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  function whatsappReady(number) {
+    var n = String(number || "").replace(/\D/g, "");
+    return /^9665\d{8}$/.test(n) && n !== "966500000000";
+  }
+  function openExternal(url) {
+    var win = w.open(url, "_blank", "noopener,noreferrer");
+    if (win) win.opener = null;
   }
   function toast(m) {
     var el = $("#toast"), t = $("#toastT");
@@ -757,6 +790,14 @@
     $("#barBtn").onclick = openCart;
     $("#heroOrder").onclick = function () { go(M.sections[0].id); };
     $$(".sheet .bk").forEach(function (b) { b.onclick = function () { closeSheet(b.parentNode.id); }; });
+    $$(".sheet-close").forEach(function (b) { b.onclick = function () { closeSheet(b.closest(".sheet").id); }; });
+    d.addEventListener("error", function (e) {
+      var img = e.target;
+      if (!img || !img.classList || !img.classList.contains("atlas-sheet")) return;
+      var frame = img.closest(".atlas-frame"), box = frame && frame.parentNode;
+      if (box) box.classList.add("noimg");
+      if (frame) frame.remove();
+    }, true);
     addEventListener("keydown", function (e) {
       if (e.key === "Escape") { var s = $(".sheet.on"); if (s) closeSheet(s.id); else closeSearch(); }
     });

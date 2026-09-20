@@ -8,7 +8,7 @@ window.SALES = {
   order: {
     whatsapp: "966500000000",       // رقم الواتساب اللي الطلبات توصله
     tables: 10,
-    modes: ["الطاولة", "تيك أواي", "توصيل"],
+    modes: ["الطاولة"],
     deliveryFee: 10,
     service: 0
   },
