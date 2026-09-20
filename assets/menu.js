@@ -199,6 +199,7 @@
 
   /* ================= الأكثر طلبًا ================= */
   function renderFeatured() {
+    if (!$("#featRail")) return;
     var c = F.control();
     var list = (S.badges.hot || []).filter(function (n) {
       return F.byName(n) && c.soldOut.indexOf(n) < 0;
@@ -385,11 +386,11 @@
       feat = $("#featured"), comb = $("#combos"), off = $("#offerBar");
     v = (v || "").trim();
     if (!v) {
-      menu.classList.remove("hide"); feat.classList.remove("hide"); comb.classList.remove("hide");
+      menu.classList.remove("hide"); if (feat) feat.classList.remove("hide"); if (comb) comb.classList.remove("hide");
       if (offer && offer.active) off.classList.remove("hide");
       res.classList.add("hide"); return;
     }
-    menu.classList.add("hide"); feat.classList.add("hide"); comb.classList.add("hide"); off.classList.add("hide");
+    menu.classList.add("hide"); if (feat) feat.classList.add("hide"); if (comb) comb.classList.add("hide"); off.classList.add("hide");
     res.classList.remove("hide");
     var c = F.control();
     var hits = F.items().filter(function (r) {
