@@ -119,59 +119,35 @@ svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;
 
 /* ================= الهيرو ================= */
 #hero{position:relative;z-index:2;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;text-align:center;
-  padding:24px 20px 74px;min-height:100svh}
+  align-items:center;justify-content:flex-end;text-align:center;isolation:isolate;
+  padding:24px 20px 104px;min-height:100svh;color:#fff;
+  background-image:linear-gradient(180deg,rgba(0,0,0,.58) 0%,rgba(0,0,0,.05) 34%,rgba(0,0,0,.08) 64%,rgba(0,0,0,.78) 100%),url("img/hero-roastery.webp");
+  background-size:cover;background-position:center 48%;background-repeat:no-repeat}
+#hero::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(90deg,rgba(0,0,0,.18),transparent 35%,transparent 65%,rgba(0,0,0,.16))}
 #hero .an{opacity:0;transform:translateY(18px);
   transition:opacity .9s ease,transform .9s cubic-bezier(.2,.7,.2,1)}
 body.go #hero .an{opacity:1;transform:translateY(0)}
-body.go #hero .an:nth-child(2){transition-delay:.10s}
-body.go #hero .an:nth-child(3){transition-delay:.30s}
-body.go #hero .an:nth-child(4){transition-delay:.42s}
-body.go #hero .an:nth-child(5){transition-delay:.54s}
-body.go #hero .an:nth-child(6){transition-delay:.66s}
+body.go #hero .an:nth-child(2){transition-delay:.18s}
 
-.steam{width:66px;height:44px;color:var(--br);overflow:visible;margin-bottom:6px}
-.steam path{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;opacity:0;
-  animation:steam 3.2s ease-in-out infinite}
-.steam .s2{animation-delay:.9s}.steam .s3{animation-delay:1.7s}
-@keyframes steam{0%{opacity:0;transform:translateY(8px)}35%{opacity:.55}100%{opacity:0;transform:translateY(-12px)}}
+.wordmark{position:absolute;top:max(24px,calc(env(safe-area-inset-top) + 14px));left:50%;
+  transform:translateX(-50%)!important;margin:0;padding:0;will-change:opacity;width:min(330px,62vw)}
+.wordmark img{display:block;width:100%;height:auto;filter:drop-shadow(0 3px 18px rgba(0,0,0,.5))}
 
-.hero-art{width:min(540px,86vw);position:relative}
-.arch{position:relative;overflow:hidden;border-radius:var(--arch);
-  box-shadow:var(--shadow-lg);border:1px solid var(--line);
-  aspect-ratio:16/11;background:var(--bg2)}
-.arch::after{content:"";position:absolute;inset:0;border-radius:inherit;
-  box-shadow:inset 0 0 0 6px color-mix(in srgb,var(--bg) 62%,transparent);pointer-events:none}
-.arch img{width:100%;height:100%;object-fit:cover;
-  transform:scale(1.12);animation:slowZoom 14s ease-out forwards}
-@keyframes slowZoom{to{transform:scale(1)}}
-.arch-veil{position:absolute;inset:0;
-  background:linear-gradient(to top,var(--bg) 1%,color-mix(in srgb,var(--bg) 42%,transparent) 26%,transparent 62%)}
-
-.wordmark{font-family:var(--fd);font-weight:700;line-height:1.15;
-  font-size:clamp(64px,17vw,112px);margin-top:-.34em;
-  padding:.1em .12em .3em;margin-bottom:-.24em;position:relative;
-  background:linear-gradient(180deg,var(--deep),var(--br));
-  -webkit-background-clip:text;background-clip:text;
-  color:transparent;-webkit-text-fill-color:transparent;
-  will-change:transform,opacity}
-.wordmark img{display:block;width:min(430px,78vw);height:auto}
-.tagline{display:flex;align-items:center;gap:13px;color:var(--mut);letter-spacing:6px;
-  font-size:13px;font-weight:500;margin-top:clamp(16px,2.8vw,28px)}
-.tagline::before,.tagline::after{content:"";height:1px;width:40px;background:linear-gradient(90deg,transparent,var(--br))}
-.tagline::after{background:linear-gradient(270deg,transparent,var(--br))}
-
-.hero-cta{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap;justify-content:center}
+.hero-cta{position:absolute;bottom:76px;left:50%;transform:translateX(-50%)!important;
+  display:flex;justify-content:center;margin:0}
 .btn-ghost{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border-radius:100px;
   border:1px solid var(--line2);background:var(--card);color:var(--ink);
   font-size:13.5px;font-weight:600;box-shadow:var(--shadow);
   transition:transform .35s cubic-bezier(.34,1.56,.64,1),border-color .3s,background .3s}
 .btn-ghost .ic{width:17px;height:17px;color:var(--br)}
 .btn-ghost:hover{transform:translateY(-3px);border-color:var(--gold)}
-.btn-ghost:first-child{background:linear-gradient(135deg,var(--br),var(--deep));color:var(--on);border-color:transparent}
+.btn-ghost:first-child{min-width:218px;justify-content:center;padding:14px 24px;
+  background:linear-gradient(135deg,#a87342,#6f3d1d);color:#fff;border-color:rgba(255,255,255,.16);
+  box-shadow:0 14px 34px rgba(0,0,0,.35);font-size:16px}
 .btn-ghost:first-child .ic{color:currentColor}
 
-.cue{position:absolute;bottom:22px;color:var(--mut);display:flex;flex-direction:column;
+.cue{position:absolute;bottom:20px;color:rgba(255,255,255,.88);display:flex;flex-direction:column;
   align-items:center;gap:6px;font-size:12px}
 .cue svg{width:20px;height:20px;animation:cueBob 1.8s ease-in-out infinite}
 @keyframes cueBob{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(6px);opacity:1}}
