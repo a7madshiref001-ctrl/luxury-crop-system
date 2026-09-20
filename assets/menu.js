@@ -86,7 +86,7 @@
     /* المنيو بيفهرس الأصناف بس — بيانات العرض بتتولّد في اللوحة،
        عشان جوال العميل ما يشيلش ميجات في التخزين ولا يبطّأ أول فتح */
     F.buildIndex();
-    theme(F.get(F.K.theme, "light"), true);
+    theme();
     offer = F.offerLive();
 
     renderPills();
@@ -98,7 +98,7 @@
     restoreCart();
 
     F.track("visit", { ref: d.referrer || "" });
-    beans(); scrollFx(); wire();
+    splash(); beans(); scrollFx(); wire();
 
     F.onMsg(function (m) {
       if (m.type === "control") {
@@ -108,32 +108,28 @@
     setInterval(tickOffer, 1000);
   }
 
-  /* ================= الثيم ================= */
-  function theme(t, silent) {
-    var r = d.documentElement;
-    if (t === "dark") { r.dataset.theme = "dark"; r.setAttribute("data-t", "dark"); }
-    else { delete r.dataset.theme; r.setAttribute("data-t", "light"); }
-    $("#moonIco").style.display = t === "dark" ? "none" : "block";
-    $("#sunIco").style.display = t === "dark" ? "block" : "none";
-    var mt = $("#metaTheme"); if (mt) mt.content = t === "dark" ? "#161009" : "#F2ECDC";
-    F.set(F.K.theme, t);
-    if (!silent) F.track("theme", { t: t });
+  /* ================= السبلاش ================= */
+  function splash() {
+    var el = $("#splash"), done = false;
+    if (!el) { d.body.classList.remove("lock"); d.body.classList.add("go"); return; }
+    function bye() {
+      if (done) return; done = true;
+      el.classList.add("bye");
+      d.body.classList.remove("lock");
+      setTimeout(function () { d.body.classList.add("go"); }, 30);
+      setTimeout(function () { el.remove(); }, 950);
+    }
+    el.addEventListener("click", bye);
+    setTimeout(bye, matchMedia("(prefers-reduced-motion: reduce)").matches ? 250 : 2500);
   }
-  function toggleTheme() {
-    var next = d.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    if (navigator.vibrate) navigator.vibrate(8);
-    var btn = $("#themeBtn");
-    if (d.startViewTransition) {
-      var r = btn.getBoundingClientRect(),
-        x = r.left + r.width / 2, y = r.top + r.height / 2,
-        rad = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
-      var tr = d.startViewTransition(function () { theme(next); });
-      tr.ready.then(function () {
-        d.documentElement.animate(
-          { clipPath: ["circle(0px at " + x + "px " + y + "px)", "circle(" + rad + "px at " + x + "px " + y + "px)"] },
-          { duration: 650, easing: "cubic-bezier(.65,0,.35,1)", pseudoElement: "::view-transition-new(root)" });
-      });
-    } else theme(next);
+
+  /* ================= الثيم الفاتح الثابت ================= */
+  function theme() {
+    var r = d.documentElement;
+    delete r.dataset.theme;
+    r.setAttribute("data-t", "light");
+    var mt = $("#metaTheme"); if (mt) mt.content = "#F7F6F2";
+    F.set(F.K.theme, "light");
   }
 
   /* ================= حبوب البن ================= */
@@ -782,7 +778,6 @@
 
   /* ================= الأحداث ================= */
   function wire() {
-    $("#themeBtn").onclick = toggleTheme;
     $("#searchBtn").onclick = openSearch;
     $("#searchClose").onclick = closeSearch;
     $("#q").addEventListener("input", function (e) { runSearch(e.target.value); });
