@@ -70,10 +70,19 @@ const requiredClientIds = ["hero", "nav", "menu", "combos", "bar", "shItem", "sh
 const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
 requiredClientIds.forEach(id => pass(new RegExp(`id=["']${id}["']`).test(indexHtml), `عنصر أساسي ناقص: #${id}`));
 
-if (!/^9665\d{8}$/.test(String(sales.order.whatsapp)) || sales.order.whatsapp === "966500000000") {
-  warnings.push("رقم واتساب استقبال الطلبات ما زال تجريبيًا؛ الإرسال معطّل بأمان حتى ضبط الرقم الحقيقي.");
-}
-warnings.push("لوحة الإدارة محلية على المتصفح ولا تمثل تسجيل دخول أو قاعدة بيانات مشتركة بين الأجهزة.");
+const menuJs = fs.readFileSync(path.join(root, "assets/menu.js"), "utf8");
+const backendJs = fs.readFileSync(path.join(root, "assets/backend.js"), "utf8");
+const configJs = fs.readFileSync(path.join(root, "data/backend-config.js"), "utf8");
+const migration = fs.readFileSync(path.join(root, "supabase/migrations/20260921030000_secure_ordering.sql"), "utf8");
+pass(!menuJs.includes("wa.me/") && !menuJs.includes("أرسل الطلب على واتساب"), "مسار طلب واتساب ما زال موجودًا");
+pass(menuJs.includes("Backend.placeOrder"), "واجهة العميل لا تستخدم مسار الطلب الآمن");
+pass(backendJs.includes('.rpc("place_order"'), "الطلب لا يمر عبر دالة الخادم المحمية");
+pass(!/service[_-]?role/i.test(configJs), "ملف الواجهة يذكر مفتاح service role المحظور");
+pass(migration.includes("enable row level security"), "RLS غير مفعّل في مخطط قاعدة البيانات");
+pass(migration.includes("security definer") && migration.includes("set search_path = ''"), "دالة الطلب المحمية لا تثبّت search_path");
+pass(migration.includes("rate_limited") && migration.includes("idempotency_key"), "الحماية من التكرار أو الإغراق غير مكتملة");
+pass(migration.includes("revoke all on public.admin_users"), "صلاحيات الجداول لم تُسحب افتراضيًا");
+if (!/url:\s*"https:\/\//.test(configJs)) warnings.push("البرمجة جاهزة لكن بيانات ربط Supabase لم توضع بعد؛ الطلبات ستظل مغلقة بأمان.");
 
 console.log(`PASS: ${items.length} صنفًا، ${menu.sections.length} أقسام، ${atlasNumbers.size} ملفات أطلس و${(sales.combos || []).length} صور عروض.`);
 warnings.forEach(message => console.warn(`WARN: ${message}`));

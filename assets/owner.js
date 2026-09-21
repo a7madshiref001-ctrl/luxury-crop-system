@@ -20,16 +20,18 @@
     customers: ["العملاء", "قاعدة أرقام تكبر لحالها"],
     reviews:   ["التقييمات", "الفلتر يحمي تقييمك في قوقل"],
     control:   ["تحكّم فوري", "غيّر المنيو وانت قاعد — بدون طباعة"],
+    catalog:   ["المنتجات والعروض", "عدّل المنيو والتوفر والأسعار بسهولة"],
     roi:       ["حاسبة العائد", "السيستم يرجّع فلوسه في كم يوم"],
     links:     ["الروابط والإعدادات", "لينك العميل، الـQR، والإعدادات السريعة"]
   };
 
   /* ---------------- تهيئة ---------------- */
   function init() {
-    F.ensureSeed();
+    var liveBackend = !!(w.Backend && w.Backend.configured());
+    if (!liveBackend) F.ensureSeed();
     var t = F.get(F.K.theme, "light");
     d.documentElement.setAttribute("data-t", t);
-    demo = F.get(F.K.demo, true);
+    demo = liveBackend ? false : F.get(F.K.demo, true);
     $("bName").textContent = M.brand.nameAr;
 
     $("range").addEventListener("change", function () { days = +this.value; render(); });
@@ -411,7 +413,7 @@
     var menuUrl = base + "index.html";
     $("links").innerHTML =
       linkRow("👥 منيو العميل", menuUrl, "ده اللي بيتحط على الترابيزة") +
-      linkRow("🔐 لوحة الإدارة المحلية", base + "owner.html", "نسخة محلية وليست تسجيل دخول آمن");
+      linkRow("🔐 لوحة الإدارة", base + "owner.html", "محمية بتسجيل دخول وصلاحيات مدير");
     $("qr").innerHTML =
       '<img alt="QR" style="width:190px;height:190px;border-radius:16px;background:#fff;padding:9px" ' +
       'src="https://api.qrserver.com/v1/create-qr-code/?size=380x380&data=' + encodeURIComponent(menuUrl) + '" ' +
@@ -422,8 +424,8 @@
     });
 
     $("settings").innerHTML =
-      setRow("رقم استقبال الطلبات", S.order.whatsapp) +
-      setRow("عدد الترابيزات", S.order.tables) +
+      setRow("استقبال الطلبات", "مباشر داخل لوحة الإدارة") +
+      setRow("عدد الطاولات", S.order.tables) +
       (S.order.modes.indexOf("توصيل") > -1 ? setRow("رسوم التوصيل", S.order.deliveryFee + " " + CUR) : "") +
       setRow("هدف الولاء", S.loyalty.goal + " طلبات → " + S.loyalty.reward) +
       setRow("حد فلتر التقييم", S.review.threshold + " نجوم فأكتر تروح جوجل");

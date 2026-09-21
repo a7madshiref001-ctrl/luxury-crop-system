@@ -108,6 +108,17 @@
     });
     setInterval(tickOffer, 1000);
   }
+  async function bootstrap() {
+    if (w.Backend && w.Backend.configured()) {
+      try {
+        var catalog = await w.Backend.loadCatalog();
+        w.Backend.applyCatalog(M, S, catalog);
+      } catch (err) {
+        console.error("Catalog load failed", err);
+      }
+    }
+    init();
+  }
 
   /* ================= السبلاش ================= */
   function splash() {
@@ -187,7 +198,8 @@
     if (!$("#featRail")) return;
     var c = F.control();
     var list = (S.badges.hot || []).filter(function (n) {
-      return F.byName(n) && c.soldOut.indexOf(n) < 0;
+      var found = F.byName(n);
+      return found && !found.raw._remoteSoldOut && c.soldOut.indexOf(n) < 0;
     }).slice(0, 6);
     $("#featRail").innerHTML = list.map(function (n, i) {
       var r = F.byName(n), it = r.raw;
@@ -239,7 +251,7 @@
   }
 
   function card(it, s, c, i) {
-    var out = c.soldOut.indexOf(it.n) > -1;
+    var out = !!it._remoteSoldOut || c.soldOut.indexOf(it.n) > -1;
     var base = it.p != null ? it.p : (it.s || [0])[0];
     var raw = F.priceOf(it.n, base), p = discounted(s.id, raw);
     var tags = "";
@@ -403,7 +415,7 @@
   function openItem(name) {
     var r = F.byName(name); if (!r) return;
     var c = F.control();
-    if (c.soldOut.indexOf(name) > -1) { toast("الصنف هذا خلص حاليًا"); return; }
+    if (r.raw._remoteSoldOut || c.soldOut.indexOf(name) > -1) { toast("الصنف هذا خلص حاليًا"); return; }
     var s = F.section(r.sec);
     sel = { rec: r, sec: s, size: 0, qty: 1, addons: [], note: "", sug: null };
     F.track("item_view", { n: name, sec: r.sec, p: r.price });
@@ -411,7 +423,7 @@
     var pr = S.pairings[r.sec] || S.pairings._default;
     for (var i = 0; i < pr.length; i++) {
       var g = F.byName(pr[i]);
-      if (g && g.n !== r.n && c.soldOut.indexOf(g.n) < 0) { sel.sug = g; break; }
+      if (g && g.n !== r.n && !g.raw._remoteSoldOut && c.soldOut.indexOf(g.n) < 0) { sel.sug = g; break; }
     }
     $("#itemBody").innerHTML = itemSheet();
     openSheet("shItem");
@@ -487,10 +499,10 @@
   function quickAdd(name, el) {
     var r = F.byName(name); if (!r) return;
     var c = F.control();
-    if (c.soldOut.indexOf(name) > -1) { toast("الصنف هذا خلص حاليًا"); return; }
+    if (r.raw._remoteSoldOut || c.soldOut.indexOf(name) > -1) { toast("الصنف هذا خلص حاليًا"); return; }
     if (r.raw.s) { openItem(name); return; }               // فيه أحجام → افتح الشيت
     var p = discounted(r.sec, F.priceOf(name, r.raw.p));
-    push({ n: name, k: r.raw.k, p: p, q: 1, sec: r.sec }, el);
+    push({ kind: "product", id: r.raw.k, n: name, k: r.raw.k, p: p, q: 1, sec: r.sec }, el);
     F.track("add_cart", { n: name, sec: r.sec, p: p });
     if (el) { el.classList.add("done"); el.innerHTML = IC.check; setTimeout(function () { el.classList.remove("done"); el.innerHTML = IC.plus; }, 900); }
     toast(name + " أُضيف لطلبك");
@@ -501,11 +513,11 @@
     var base = it.s ? it.s[sel.size] : it.p;
     var p = discounted(r.sec, F.priceOf(it.n, base));
     var nt = $("#nt"); sel.note = nt ? nt.value.trim() : "";
-    push({ n: it.n + (it.s ? " (" + sizes[sel.size] + ")" : ""), k: it.k, p: p, q: sel.qty, sec: r.sec, note: sel.note });
+    push({ kind: "product", id: it.k, size_index: it.s ? sel.size : null, n: it.n + (it.s ? " (" + sizes[sel.size] + ")" : ""), k: it.k, p: p, q: sel.qty, sec: r.sec, note: sel.note });
     F.track("add_cart", { n: it.n, sec: r.sec, p: p });
     var addons = S.addons[r.sec] || S.addons._default;
     sel.addons.forEach(function (i) {
-      cart.push({ n: "إضافة " + addons[i].n, p: addons[i].p, q: sel.qty, sec: r.sec, addon: 1 });
+      cart.push({ kind: "addon", id: addons[i].id || addonId(r.sec, i), n: "إضافة " + addons[i].n, p: addons[i].p, q: sel.qty, sec: r.sec, addon: 1 });
       F.track("addon_add", { n: addons[i].n, p: addons[i].p });
     });
     saveCart(); syncBar(true);
@@ -514,14 +526,14 @@
   }
   function takeSug() {
     if (!sel || !sel.sug) return;
-    push({ n: sel.sug.n, k: sel.sug.raw.k, p: sel.sug.price, q: 1, sec: sel.sug.sec, up: 1 });
+    push({ kind: "product", id: sel.sug.raw.k, n: sel.sug.n, k: sel.sug.raw.k, p: sel.sug.price, q: 1, sec: sel.sug.sec, up: 1 });
     F.track("upsell_accept", { n: sel.sug.n, p: sel.sug.price });
     sel.sug = null; refreshItem(); toast("تمام، أضفناه");
   }
   function addCombo(id, el) {
     var c = (S.combos || []).filter(function (x) { return x.id === id; })[0];
     if (!c) return;
-    push({ n: "كومبو " + c.n, k: keyOf((c.parts || [])[0]), p: c.p, q: 1, sec: "combo", combo: 1 }, el);
+    push({ kind: "offer", id: c.id, n: "كومبو " + c.n, k: keyOf((c.parts || [])[0]), p: c.p, q: 1, sec: "combo", combo: 1 }, el);
     F.track("add_cart", { n: "كومبو " + c.n, sec: "combo", p: c.p });
     F.track("combo_add", { n: c.n, p: c.p });
     toast("أُضيف الكومبو — وفّرت " + (c.was - c.p) + " " + CUR);
@@ -535,7 +547,9 @@
         Number.isFinite(Number(l.p)) && Number(l.p) >= 0 && Number(l.p) <= 10000 &&
         Number.isInteger(Number(l.q)) && Number(l.q) >= 1 && Number(l.q) <= 99;
     }).slice(0, 100).map(function (l) {
-      return Object.assign({}, l, { p: Number(l.p), q: Number(l.q), note: String(l.note || "").slice(0, 120) });
+      var kind = l.kind || (l.combo ? "offer" : l.addon ? "addon" : "product");
+      var id = l.id || l.k || "";
+      return Object.assign({}, l, { kind: kind, id: id, p: Number(l.p), q: Number(l.q), note: String(l.note || "").slice(0, 120) });
     });
     saveCart(); syncBar();
   }
@@ -616,7 +630,7 @@
     h += '<div class="sh-sec"><div class="lb">' + IC.phone + 'اسمك ورقمك</div>' +
       '<input class="fld" id="cn" autocomplete="name" maxlength="60" placeholder="الاسم (اختياري)" style="margin-bottom:8px">' +
       '<input class="fld" id="cp" type="tel" inputmode="tel" autocomplete="tel" maxlength="10" pattern="05[0-9]{8}" placeholder="05xxxxxxxx (اختياري)">' +
-      '<div class="note-l">بياناتك اختيارية وتُحفظ على هذا الجهاز فقط.</div></div>';
+      '<div class="note-l">بياناتك اختيارية وتُستخدم لتأكيد الطلب وخدمتك.</div></div>';
 
     if (S.loyalty.on) {
       var L = F.get(F.K.loy, { n: 0 });
@@ -631,12 +645,12 @@
       '<div class="tot hide" id="feeRow"><span>توصيل</span><b>' + S.order.deliveryFee + SAR + '</b></div>' +
       '<div class="tot big"><span>الإجمالي</span><b id="grand">' + F.money(t) + SAR + '</b></div></div>';
 
-    var ready = whatsappReady(S.order.whatsapp);
-    h += '<div class="cta-wrap"><button class="btn-main" data-act="send"' + (ready ? "" : " disabled") + '>' + IC.wa +
-      (ready ? 'أرسل الطلب على واتساب' : 'الطلب غير متاح مؤقتًا') + '</button>' +
+    var ready = !!(w.Backend && w.Backend.configured() && S.order.open !== false);
+    h += '<div class="cta-wrap"><button class="btn-main" data-act="send"' + (ready ? "" : " disabled") + '>' + IC.check +
+      (ready ? 'تأكيد وإرسال الطلب' : 'نظام الطلبات قيد التجهيز') + '</button>' +
       '<div class="note-l" style="text-align:center">' + (ready
-        ? 'بينفتح واتساب والطلب مكتوب — ترسله وخلاص'
-        : 'رقم استقبال الطلبات لم يتم ضبطه بعد. تواصل مع إدارة المقهى.') + '</div></div>';
+        ? 'يوصل طلبك للإدارة مباشرة ويظهر رقم الطلب هنا'
+        : 'سيتم فتح الطلبات فور اكتمال الربط الآمن.') + '</div></div>';
     return h;
   }
   function setMode(btn) {
@@ -656,7 +670,7 @@
   }
   function lastChance(n) {
     var g = F.byName(n); if (!g) return;
-    cart.push({ n: g.n, k: g.raw.k, p: g.price, q: 1, sec: g.sec, up: 1 });
+    cart.push({ kind: "product", id: g.raw.k, n: g.n, k: g.raw.k, p: g.price, q: 1, sec: g.sec, up: 1 });
     F.track("upsell_accept", { n: g.n, p: g.price, where: "cart" });
     saveCart(); syncBar(true);
     $("#cartBody").innerHTML = cartSheet();
@@ -664,12 +678,31 @@
   }
 
   /* ================= إرسال ================= */
-  function send() {
+  function requestId(prefix) {
+    if (w.crypto && w.crypto.randomUUID) return prefix + w.crypto.randomUUID().replace(/-/g, "");
+    return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  }
+  function clientId() {
+    var key = "luxurycrop.client.v1", id = "";
+    try { id = localStorage.getItem(key) || ""; } catch (e) {}
+    if (id.length < 16) { id = requestId("c_"); try { localStorage.setItem(key, id); } catch (e) {} }
+    return id;
+  }
+  function addonId(section, index) { return "addon_" + String(section).replace(/[^a-z0-9_-]/gi, "_").toLowerCase() + "_" + index; }
+  function safeOrderError(err) {
+    var msg = String(err && (err.message || err.details) || "");
+    if (msg.indexOf("rate_limited") > -1) return "طلبات كثيرة في وقت قصير — انتظر دقائق وجرب";
+    if (msg.indexOf("ordering_closed") > -1) return "استقبال الطلبات متوقف مؤقتًا";
+    if (msg.indexOf("item_unavailable") > -1) return "أحد الأصناف لم يعد متاحًا — حدّث الصفحة وجرب";
+    if (msg.indexOf("invalid_table") > -1) return "رقم الطاولة غير صحيح";
+    return navigator.onLine ? "تعذّر إرسال الطلب — جرّب مرة ثانية" : "لا يوجد اتصال بالإنترنت";
+  }
+  async function send(button) {
     var t = sub(), m = mode || S.order.modes[0];
     var tbl = $("#tbl") ? $("#tbl").value : "";
     var nm = $("#cn") ? $("#cn").value.trim() : "";
     var ph = $("#cp") ? $("#cp").value.trim() : "";
-    if (!whatsappReady(S.order.whatsapp)) { toast("رقم استقبال الطلبات غير مضبوط"); return; }
+    if (!w.Backend || !w.Backend.configured()) { toast("نظام الطلبات قيد التجهيز"); return; }
     if (m === "الطاولة") {
       var tableNo = Number(tbl);
       if (!Number.isInteger(tableNo) || tableNo < 1 || tableNo > S.order.tables) {
@@ -684,30 +717,23 @@
     var up = cart.filter(function (l) { return l.up; }).reduce(function (a, l) { return a + l.p * l.q; }, 0);
     var ad = cart.filter(function (l) { return l.addon; }).reduce(function (a, l) { return a + l.p * l.q; }, 0);
 
-    var txt = "طلب جديد من منيو " + M.brand.nameAr + "\n\n";
-    cart.forEach(function (l) {
-      txt += "• " + l.q + " × " + l.n + " — " + (l.p * l.q) + " " + CUR + (l.note ? " (" + l.note + ")" : "") + "\n";
-    });
-    txt += "\nالنوع: " + m;
-    if (m === "الطاولة" && tbl) txt += "\nطاولة: " + tbl;
-    if (fee) txt += "\nتوصيل: " + fee + " " + CUR;
-    txt += "\nالإجمالي: " + total + " " + CUR;
-    if (nm) txt += "\nالاسم: " + nm;
-    if (ph) txt += "\nالجوال: " + ph;
-
-    F.pushOrder({
-      id: "R" + (Date.now() % 100000), t: Date.now(), lines: cart.slice(),
-      total: total, up: up, addon: ad, mode: m, table: tbl ? +tbl : null, name: nm, phone: ph
-    });
-    if (ph) F.pushCustomer({ t: Date.now(), phone: ph, name: nm || "—", spent: total });
-    if (S.loyalty.on) {
-      var L = F.get(F.K.loy, { n: 0 });
-      L.n = (L.n + 1) % (S.loyalty.goal + 1);
-      F.set(F.K.loy, L);
+    if (button) { button.disabled = true; button.setAttribute("aria-busy", "true"); button.textContent = "جاري إرسال الطلب…"; }
+    try {
+      var result = await w.Backend.placeOrder({
+        table_no: Number(tbl), customer_name: nm, customer_phone: ph,
+        idempotency_key: requestId("o_"), client_id: clientId(),
+        lines: cart.map(function (l) { return { kind: l.kind, id: l.id, qty: l.q, size_index: l.size_index, note: l.note || "" }; })
+      });
+      F.pushOrder({ id: String(result.order_number), t: Date.now(), lines: cart.slice(), total: Number(result.total || total), up: up, addon: ad, mode: m, table: +tbl, name: nm, phone: ph });
+      if (ph) F.pushCustomer({ t: Date.now(), phone: ph, name: nm || "—", spent: Number(result.total || total) });
+      if (S.loyalty.on) { var L = F.get(F.K.loy, { n: 0 }); L.n = (L.n + 1) % (S.loyalty.goal + 1); F.set(F.K.loy, L); }
+      cart = []; saveCart(); syncBar(); closeSheet("shCart");
+      toast("تم إرسال طلبك رقم #" + result.order_number);
+      setTimeout(openReview, 1300);
+    } catch (err) {
+      toast(safeOrderError(err));
+      if (button) { button.disabled = false; button.removeAttribute("aria-busy"); button.innerHTML = IC.check + "تأكيد وإرسال الطلب"; }
     }
-    openExternal("https://wa.me/" + S.order.whatsapp + "?text=" + encodeURIComponent(txt));
-    cart = []; saveCart(); syncBar(); closeSheet("shCart");
-    setTimeout(openReview, 1300);
   }
 
   /* ================= التقييم ================= */
@@ -741,10 +767,6 @@
     var n = $("#rvNote") ? $("#rvNote").value.trim() : "";
     F.pushReview({ t: Date.now(), stars: stars, note: n, sent: "owner" });
     F.track("review", { stars: stars, sent: "owner" });
-    if (whatsappReady(S.review.ownerWhatsapp)) {
-      openExternal("https://wa.me/" + S.review.ownerWhatsapp + "?text=" +
-        encodeURIComponent("تقييم " + stars + "/5 من منيو " + M.brand.nameAr + ": " + n));
-    }
     closeSheet("shRev"); coupon();
   }
   function coupon() {
@@ -767,10 +789,6 @@
     sheet.setAttribute("aria-hidden", "true");
     if (!$(".sheet.on")) d.body.classList.remove("sheet-open");
     if (lastFocus && lastFocus.focus) lastFocus.focus();
-  }
-  function whatsappReady(number) {
-    var n = String(number || "").replace(/\D/g, "");
-    return /^9665\d{8}$/.test(n) && n !== "966500000000";
   }
   function openExternal(url) {
     var win = w.open(url, "_blank", "noopener,noreferrer");
@@ -824,7 +842,7 @@
       if ((el = e.target.closest("[data-act]"))) {
         var a = el.dataset.act;
         if (a === "add") addFromSheet();
-        else if (a === "send") send();
+        else if (a === "send") send(el);
         else if (a === "google") toGoogle();
         else if (a === "low") sendLow();
       }
@@ -844,5 +862,5 @@
   }
 
   w.App = { open: openItem, cart: openCart };
-  d.addEventListener("DOMContentLoaded", init);
+  d.addEventListener("DOMContentLoaded", bootstrap);
 })(window, document);

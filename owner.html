@@ -6,14 +6,26 @@
 <meta name="robots" content="noindex,nofollow">
 <title>لوحة التحكّم — محصول فاخر</title>
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://api.qrserver.com; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://api.qrserver.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
 <meta name="theme-color" content="#F2ECDC" id="metaTheme">
 <link rel="icon" href="assets/logo.png">
 <link rel="stylesheet" href="assets/fonts.css?v=20260920-qa">
 <link rel="stylesheet" href="assets/core.css?v=20260920-qa">
-<link rel="stylesheet" href="assets/owner.css?v=20260920-qa">
+<link rel="stylesheet" href="assets/owner.css?v=20260921-orders">
 </head>
-<body>
+<body class="auth-pending">
+
+<section id="adminGate" class="admin-gate" aria-labelledby="loginTitle">
+  <form id="adminLogin" class="login-card">
+    <img src="assets/logo.png" alt="محصول فاخر">
+    <h1 id="loginTitle">دخول الإدارة</h1>
+    <p id="loginHelp">ادخل بالحساب المصرّح له لإدارة الطلبات والمنيو.</p>
+    <label>البريد الإلكتروني<input id="adminEmail" type="email" autocomplete="username" required></label>
+    <label>كلمة المرور<input id="adminPassword" type="password" autocomplete="current-password" minlength="8" required></label>
+    <button class="btn btn-p" type="submit" id="loginBtn">دخول آمن</button>
+    <div id="loginError" class="login-error" role="alert" aria-live="polite"></div>
+  </form>
+</section>
 
 <div id="scrim" data-own-action="close-menu"></div>
 <div id="shell">
@@ -42,16 +54,18 @@
   <div class="navgrp">
     <div class="ttl">التحكّم</div>
     <button class="nv" data-p="control"><span class="e">🎛️</span> تحكّم فوري</button>
+    <button class="nv" data-p="catalog"><span class="e">☕</span> المنتجات والعروض</button>
     <button class="nv" data-p="roi"><span class="e">💰</span> حاسبة العائد</button>
     <button class="nv" data-p="links"><span class="e">🔗</span> الروابط والإعدادات</button>
   </div>
 
   <div class="foot">
-    <button class="demo-chip" id="demoChip" data-own-action="demo">● وضع العرض</button>
+    <button class="demo-chip real" id="demoChip" type="button">● متصل مباشرة</button>
     <div style="display:flex;gap:7px;margin-top:10px">
       <button class="btn btn-g btn-s" style="flex:1" data-own-action="theme">🌙 الوضع</button>
       <button class="btn btn-g btn-s" style="flex:1" data-own-action="print">🖨️ طباعة</button>
     </div>
+    <button class="btn btn-g btn-s" id="adminLogout" style="width:100%;margin-top:8px">تسجيل الخروج</button>
   </div>
 </aside>
 
@@ -65,7 +79,7 @@
       <div class="sb" id="pgSub">أهم الأرقام في مكان واحد</div>
     </div>
     <div class="sp"></div>
-    <span class="live"><i></i> على هذا الجهاز</span>
+    <span class="live" id="liveState"><i></i> متصل مباشرة</span>
     <select class="selr" id="range" aria-label="الفترة الزمنية للتقارير">
       <option value="7">آخر ٧ أيام</option>
       <option value="30" selected>آخر ٣٠ يوم</option>
@@ -75,9 +89,9 @@
 
   <div id="page">
 
-  <div class="local-notice" role="note">
-    <b>نسخة تشغيل محلية</b>
-    <span>الطلبات والتحكم محفوظان في هذا المتصفح فقط. الربط بين أجهزة العملاء والإدارة وتسجيل الدخول الآمن يحتاجان قاعدة بيانات وخادمًا محميًا.</span>
+  <div class="local-notice live-notice" role="status" id="liveNotice">
+    <b>لوحة الطلبات المباشرة</b>
+    <span>أي طلب جديد يظهر هنا تلقائيًا، والأسعار تُحسب داخل الخادم.</span>
   </div>
 
   <!-- ---------- الرئيسية ---------- -->
@@ -270,6 +284,31 @@
     </div>
   </div>
 
+  <!-- ---------- إدارة المنتجات والعروض ---------- -->
+  <div class="pane" id="p-catalog">
+    <div class="grid g2" style="margin-bottom:16px">
+      <div class="card">
+        <h2>☕ المنتجات</h2>
+        <div class="sub">غيّر الاسم والوصف والسعر والتوفر، ويظهر التعديل في المنيو بعد الحفظ.</div>
+        <input class="sfld" id="liveProductSearch" placeholder="🔍 ابحث عن منتج…">
+        <div id="liveProductList" class="editor-list"></div>
+      </div>
+      <div class="card">
+        <h2>🎁 Luxury Crop offers</h2>
+        <div class="sub">إدارة السعر والصورة ومحتويات كل عرض.</div>
+        <div id="liveOfferList" class="editor-list"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>⚙️ استقبال الطلبات</h3>
+      <div class="settings-inline">
+        <label>عدد الطاولات<input id="liveTables" type="number" min="1" max="500"></label>
+        <label class="check-line"><input id="liveOrdering" type="checkbox"> استقبال الطلبات مفتوح</label>
+        <button class="btn btn-p btn-s" id="saveStoreSettings">حفظ الإعدادات</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ---------- حاسبة العائد ---------- -->
   <div class="pane" id="p-roi">
     <div class="card" style="margin-bottom:16px">
@@ -329,9 +368,21 @@
 </main><!-- /main -->
 </div><!-- /shell -->
 
+<dialog id="editorDialog" class="editor-dialog">
+  <form method="dialog" id="editorForm">
+    <div class="dialog-head"><h2 id="editorTitle">تعديل</h2><button value="cancel" aria-label="إغلاق">×</button></div>
+    <div id="editorFields"></div>
+    <div class="dialog-actions"><button class="btn btn-g" value="cancel">إلغاء</button><button class="btn btn-p" id="editorSave" value="default">حفظ التعديل</button></div>
+  </form>
+</dialog>
+
 <script defer src="data/menu.js?v=20260921-approved-menu"></script>
 <script defer src="data/sales.js?v=20260921-combo-images"></script>
+<script defer src="data/backend-config.js?v=20260921-orders"></script>
+<script defer src="assets/vendor/supabase-2.116.0.js?v=2.116.0"></script>
+<script defer src="assets/backend.js?v=20260921-orders"></script>
 <script defer src="assets/sys.js?v=20260921-approved-menu"></script>
-<script defer src="assets/owner.js?v=20260920-qa"></script>
+<script defer src="assets/owner.js?v=20260921-orders"></script>
+<script defer src="assets/owner-live.js?v=20260921-orders"></script>
 </body>
 </html>
