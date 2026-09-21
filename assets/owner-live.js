@@ -13,6 +13,18 @@
     $("adminLogin").classList.toggle("setup", !!setup);
     $("loginHelp").textContent = message;
     ["adminEmail", "adminPassword", "loginBtn"].forEach(function (id) { $(id).hidden = !!setup; });
+    $("inviteSetup").hidden = true;
+  }
+  function inviteGate() {
+    d.body.classList.add("auth-pending");
+    $("adminGate").hidden = false;
+    $("loginTitle").textContent = "تفعيل حساب الإدارة";
+    $("loginHelp").textContent = "اختار كلمة مرور قوية لحسابك، وبعدها هتفتح لوحة الإدارة مباشرة.";
+    ["adminEmail", "adminPassword", "loginBtn"].forEach(function (id) { $(id).hidden = true; });
+    $("inviteSetup").hidden = false;
+  }
+  function isInviteLink() {
+    return /(?:^|[&#])type=(?:invite|recovery)(?:&|$)/.test(w.location.hash + "&" + w.location.search);
   }
   function openApp() {
     $("adminGate").hidden = true;
@@ -33,6 +45,11 @@
       return;
     }
     var session = await B.session();
+    if (isInviteLink()) {
+      if (!session) { gate("رابط التفعيل غير صالح أو انتهت مدته. اطلب دعوة جديدة.", false); return; }
+      inviteGate();
+      return;
+    }
     if (!session) { gate("ادخل بالحساب المصرّح له لإدارة الطلبات والمنيو.", false); return; }
     try {
       await B.adminCatalog();
@@ -53,6 +70,22 @@
       openApp(); await start();
     } catch (err) { $("loginError").textContent = errorText(err); }
     finally { button.disabled = false; button.textContent = "دخول آمن"; }
+  }
+
+  async function finishInvite() {
+    var button = $("invitePasswordBtn");
+    var password = $("invitePassword").value;
+    $("loginError").textContent = "";
+    if (password.length < 10) { $("loginError").textContent = "استخدم 10 أحرف على الأقل."; return; }
+    if (password !== $("invitePasswordConfirm").value) { $("loginError").textContent = "كلمتا المرور غير متطابقتين."; return; }
+    button.disabled = true; button.textContent = "جاري تفعيل الحساب…";
+    try {
+      await B.updatePassword(password);
+      await B.adminCatalog();
+      w.history.replaceState({}, d.title, w.location.pathname + w.location.search);
+      openApp(); await start();
+    } catch (err) { $("loginError").textContent = errorText(err); }
+    finally { button.disabled = false; button.textContent = "حفظ وفتح لوحة الإدارة"; }
   }
 
   async function start() {
@@ -167,6 +200,7 @@
   }
   function wire() {
     $("adminLogin").addEventListener("submit",login);
+    $("invitePasswordBtn").addEventListener("click",finishInvite);
     $("adminLogout").addEventListener("click",async function(){await B.signOut();location.reload();});
     $("liveProductSearch").addEventListener("input",function(){renderProducts(this.value);});
     $("saveStoreSettings").addEventListener("click",saveSettings);

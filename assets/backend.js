@@ -15,7 +15,7 @@
     if (!w.supabase || !w.supabase.createClient) throw new Error("تعذّر تحميل عميل قاعدة البيانات");
     if (!client) {
       client = w.supabase.createClient(cfg.url, cfg.publishableKey, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
         global: { headers: { "X-Client-Info": "luxury-crop-web/1.0" } }
       });
     }
@@ -120,6 +120,16 @@
 
   async function signOut() { var c = init(); if (c) await c.auth.signOut(); }
 
+  async function updatePassword(password) {
+    var c = init();
+    if (!c) throw new Error("أكمل إعداد قاعدة البيانات أولًا");
+    var value = String(password || "");
+    if (value.length < 10) throw new Error("كلمة المرور لازم تكون 10 أحرف على الأقل");
+    var out = await c.auth.updateUser({ password: value });
+    if (out.error) throw out.error;
+    return out.data.user;
+  }
+
   async function listOrders(limit) {
     var c = init();
     var out = await c.from("orders").select("id,order_number,table_no,customer_name,customer_phone,status,subtotal,total,created_at,updated_at,order_items(id,item_type,item_id,item_name,quantity,unit_price,line_total,note)")
@@ -188,7 +198,7 @@
   }
 
   w.Backend = { configured: configured, init: init, loadCatalog: loadCatalog, applyCatalog: applyCatalog,
-    placeOrder: placeOrder, signIn: signIn, signOut: signOut, session: session,
+    placeOrder: placeOrder, signIn: signIn, signOut: signOut, session: session, updatePassword: updatePassword,
     listOrders: listOrders, updateOrderStatus: updateOrderStatus, subscribeOrders: subscribeOrders,
     saveProduct: saveProduct, saveOffer: saveOffer, adminCatalog: adminCatalog, saveSettings: saveSettings };
 })(window);

@@ -23,6 +23,11 @@
     <label>البريد الإلكتروني<input id="adminEmail" type="email" autocomplete="username" required></label>
     <label>كلمة المرور<input id="adminPassword" type="password" autocomplete="current-password" minlength="8" required></label>
     <button class="btn btn-p" type="submit" id="loginBtn">دخول آمن</button>
+    <div id="inviteSetup" hidden>
+      <label>كلمة المرور الجديدة<input id="invitePassword" type="password" autocomplete="new-password" minlength="10"></label>
+      <label>تأكيد كلمة المرور<input id="invitePasswordConfirm" type="password" autocomplete="new-password" minlength="10"></label>
+      <button class="btn btn-p" type="button" id="invitePasswordBtn">حفظ وفتح لوحة الإدارة</button>
+    </div>
     <div id="loginError" class="login-error" role="alert" aria-live="polite"></div>
   </form>
 </section>
@@ -380,9 +385,9 @@
 <script defer src="data/sales.js?v=20260921-combo-images"></script>
 <script defer src="data/backend-config.js?v=20260921-orders"></script>
 <script defer src="assets/vendor/supabase-2.116.0.js?v=2.116.0"></script>
-<script defer src="assets/backend.js?v=20260921-orders"></script>
+<script defer src="assets/backend.js?v=20260921-invite"></script>
 <script defer src="assets/sys.js?v=20260921-approved-menu"></script>
 <script defer src="assets/owner.js?v=20260921-orders"></script>
-<script defer src="assets/owner-live.js?v=20260921-orders"></script>
+<script defer src="assets/owner-live.js?v=20260921-invite"></script>
 </body>
 </html>
