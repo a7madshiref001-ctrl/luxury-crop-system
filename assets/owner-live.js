@@ -2,6 +2,7 @@
   "use strict";
   var B = w.Backend;
   var $ = function (id) { return d.getElementById(id); };
+  var initialAuthHash = w.location.hash;
   var state = { orders: [], products: [], offers: [], settings: null, edit: null, unsubscribe: null, poll: null };
   var STATUS = { new: "جديد", preparing: "قيد التحضير", ready: "جاهز", completed: "مكتمل", cancelled: "ملغي" };
   var esc = function (v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]; }); };
@@ -24,7 +25,19 @@
     $("inviteSetup").hidden = false;
   }
   function isInviteLink() {
-    return /(?:^|[&#])type=(?:invite|recovery)(?:&|$)/.test(w.location.hash + "&" + w.location.search);
+    return /(?:^|[&#])type=(?:invite|recovery)(?:&|$)/.test(initialAuthHash + "&" + w.location.hash + "&" + w.location.search);
+  }
+  function authLinkError() {
+    var params = new URLSearchParams(String(initialAuthHash || "").replace(/^#/, ""));
+    return { code: params.get("error_code") || "", description: params.get("error_description") || "" };
+  }
+  async function waitForInviteSession() {
+    var session = await B.session();
+    for (var i = 0; !session && i < 8; i++) {
+      await new Promise(function (resolve) { w.setTimeout(resolve, 250); });
+      session = await B.session();
+    }
+    return session;
   }
   function openApp() {
     $("adminGate").hidden = true;
@@ -44,7 +57,12 @@
       gate("اللوحة جاهزة، ويتبقى ربط مشروع قاعدة البيانات لتفعيل الدخول والطلبات المباشرة.", true);
       return;
     }
-    var session = await B.session();
+    var linkError = authLinkError();
+    if (linkError.code) {
+      gate(linkError.code === "otp_expired" ? "رابط الدعوة انتهت صلاحيته أو تم استخدامه قبل كده. استخدم أحدث رسالة دعوة وصلتك." : "رابط التفعيل غير صالح. استخدم أحدث رسالة دعوة وصلتك.", false);
+      return;
+    }
+    var session = isInviteLink() ? await waitForInviteSession() : await B.session();
     if (isInviteLink()) {
       if (!session) { gate("رابط التفعيل غير صالح أو انتهت مدته. اطلب دعوة جديدة.", false); return; }
       inviteGate();
