@@ -151,6 +151,7 @@
   /* ================= العرض ================= */
   function renderOffer() {
     var el = $("#offerBar");
+    if (!el) return;
     if (!offer || !offer.active) { el.classList.add("hide"); return; }
     el.classList.remove("hide");
     $("#offT").textContent = offer.title;
@@ -162,7 +163,8 @@
     var left = offer.endsAt - Date.now();
     if (left <= 0) { offer = F.offerLive(); renderOffer(); renderMenu(); return; }
     var h = Math.floor(left / 3600000), m = Math.floor(left % 3600000 / 60000), s = Math.floor(left % 60000 / 1000);
-    $("#offCd").textContent = (h > 0 ? h + ":" : "") + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+    var cd = $("#offCd");
+    if (cd) cd.textContent = (h > 0 ? h + ":" : "") + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
   }
   function discounted(secId, p) {
     return (offer && offer.active && offer.section === secId) ? Math.round(p * (1 - offer.pct / 100)) : p;
@@ -373,10 +375,10 @@
     v = (v || "").trim();
     if (!v) {
       menu.classList.remove("hide"); if (feat) feat.classList.remove("hide"); if (comb) comb.classList.remove("hide");
-      if (offer && offer.active) off.classList.remove("hide");
+      if (off && offer && offer.active) off.classList.remove("hide");
       res.classList.add("hide"); return;
     }
-    menu.classList.add("hide"); if (feat) feat.classList.add("hide"); if (comb) comb.classList.add("hide"); off.classList.add("hide");
+    menu.classList.add("hide"); if (feat) feat.classList.add("hide"); if (comb) comb.classList.add("hide"); if (off) off.classList.add("hide");
     res.classList.remove("hide");
     var c = F.control();
     var hits = F.items().filter(function (r) {
