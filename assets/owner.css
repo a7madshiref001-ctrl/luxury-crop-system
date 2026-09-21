@@ -61,6 +61,26 @@ body{background:var(--bg)}
   background:color-mix(in srgb, var(--mint) 12%, transparent);border:1px solid color-mix(in srgb, var(--mint) 28%, transparent);padding:5px 11px;border-radius:99px;
 }
 .live i{width:7px;height:7px;border-radius:99px;background:var(--mint);animation:pulse 1.7s infinite}
+.sound-toggle{
+  min-height:36px;padding:7px 11px;border:1px solid var(--line);border-radius:12px;
+  display:inline-flex;align-items:center;gap:7px;background:var(--card);color:var(--txt-2);
+  font-size:11.5px;font-weight:700;box-shadow:0 8px 18px -16px rgba(24,20,17,.35);
+  transition:border-color .18s,background .18s,transform .18s,color .18s;
+}
+.sound-toggle:hover{border-color:color-mix(in srgb,var(--mint) 45%,var(--line));color:var(--txt)}
+.sound-toggle:active{transform:scale(.97)}
+.sound-toggle[aria-pressed="false"]{opacity:.62;background:var(--bg-2)}
+.sound-toggle[aria-pressed="false"] span{filter:grayscale(1)}
+.order-arrival{
+  position:fixed;z-index:120;inset-inline-end:22px;top:82px;width:min(360px,calc(100vw - 28px));
+  display:flex;align-items:center;gap:11px;padding:13px 15px;border-radius:16px;
+  color:#fff;background:linear-gradient(135deg,#242321,#111);border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 24px 55px -24px rgba(0,0,0,.58);opacity:0;pointer-events:none;
+  transform:translateY(-12px) scale(.97);transition:opacity .24s,transform .34s cubic-bezier(.2,.9,.25,1.18);
+}
+.order-arrival.on{opacity:1;transform:translateY(0) scale(1)}
+.order-arrival .bell{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none;background:var(--red);font-size:19px}
+.order-arrival b{display:block;font-size:13px}.order-arrival span:last-child{display:block;margin-top:2px;font-size:11.5px;color:rgba(255,255,255,.72)}
 .selr{
   padding:8px 12px;border-radius:12px;background:var(--card);border:1px solid var(--line);
   font-size:12.5px;font-weight:700;outline:none;
@@ -110,6 +130,7 @@ body{background:var(--bg)}
   background:var(--card);border:1px solid var(--line);margin-bottom:9px;cursor:pointer;
   transition:.18s;width:100%;text-align:start;
 }
+@media(max-width:700px){.sound-toggle b{display:none}.sound-toggle{width:38px;padding:0;justify-content:center}.order-arrival{inset-inline-end:14px;top:74px}}
 .al:hover{border-color:var(--line-2);transform:translateX(-3px)}
 .al .e{font-size:19px;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none;background:var(--card-2)}
 .al.red{border-inline-start:3px solid var(--red)}

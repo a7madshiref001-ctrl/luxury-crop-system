@@ -688,6 +688,27 @@
     if (id.length < 16) { id = requestId("c_"); try { localStorage.setItem(key, id); } catch (e) {} }
     return id;
   }
+  var receiptAudio = null;
+  function primeReceiptAudio() {
+    var AudioCtx = w.AudioContext || w.webkitAudioContext;
+    if (!AudioCtx) return null;
+    if (!receiptAudio) receiptAudio = new AudioCtx();
+    if (receiptAudio.state === "suspended") receiptAudio.resume().catch(function () {});
+    return receiptAudio;
+  }
+  function playReceiptDrop() {
+    var ctx = primeReceiptAudio();
+    if (!ctx || ctx.state !== "running") return;
+    var now = ctx.currentTime, osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(1180, now);
+    osc.frequency.exponentialRampToValueAtTime(520, now + .16);
+    osc.frequency.exponentialRampToValueAtTime(760, now + .34);
+    gain.gain.setValueAtTime(.0001, now);
+    gain.gain.exponentialRampToValueAtTime(.11, now + .012);
+    gain.gain.exponentialRampToValueAtTime(.0001, now + .46);
+    osc.connect(gain); gain.connect(ctx.destination); osc.start(now); osc.stop(now + .48);
+  }
   function addonId(section, index) { return "addon_" + String(section).replace(/[^a-z0-9_-]/gi, "_").toLowerCase() + "_" + index; }
   function safeOrderError(err) {
     var msg = String(err && (err.message || err.details) || "");
@@ -698,6 +719,7 @@
     return navigator.onLine ? "تعذّر إرسال الطلب — جرّب مرة ثانية" : "لا يوجد اتصال بالإنترنت";
   }
   async function send(button) {
+    primeReceiptAudio();
     var t = sub(), m = mode || S.order.modes[0];
     var tbl = $("#tbl") ? $("#tbl").value : "";
     var nm = $("#cn") ? $("#cn").value.trim() : "";
@@ -728,7 +750,8 @@
       if (ph) F.pushCustomer({ t: Date.now(), phone: ph, name: nm || "—", spent: Number(result.total || total) });
       if (S.loyalty.on) { var L = F.get(F.K.loy, { n: 0 }); L.n = (L.n + 1) % (S.loyalty.goal + 1); F.set(F.K.loy, L); }
       cart = []; saveCart(); syncBar(); closeSheet("shCart");
-      toast("تم إرسال طلبك رقم #" + result.order_number);
+      playReceiptDrop();
+      toast("تم استلام طلبك #" + result.order_number + " — بيجيك بأسرع وقت");
       setTimeout(openReview, 1300);
     } catch (err) {
       toast(safeOrderError(err));

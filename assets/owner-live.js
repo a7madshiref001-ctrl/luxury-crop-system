@@ -3,7 +3,8 @@
   var B = w.Backend;
   var $ = function (id) { return d.getElementById(id); };
   var initialAuthHash = w.location.hash;
-  var state = { orders: [], products: [], offers: [], settings: null, edit: null, unsubscribe: null, poll: null };
+  var state = { orders: [], products: [], offers: [], settings: null, edit: null, unsubscribe: null, poll: null, orderIds: {}, ordersReady: false };
+  var audio = null, soundOn = localStorage.getItem("luxurycrop.admin.sound") !== "off";
   var STATUS = { new: "جديد", preparing: "قيد التحضير", ready: "جاهز", completed: "مكتمل", cancelled: "ملغي" };
   var esc = function (v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]; }); };
   var money = function (v) { return Number(v || 0).toLocaleString("ar-SA", { maximumFractionDigits: 2 }); };
@@ -109,23 +110,76 @@
   async function start() {
     await Promise.all([refreshOrders(), refreshCatalog()]);
     if (state.unsubscribe) state.unsubscribe();
-    state.unsubscribe = B.subscribeOrders(function () { refreshOrders(true); });
+    state.unsubscribe = B.subscribeOrders(function (payload) {
+      refreshOrders(!!payload && payload.eventType === "INSERT");
+    });
     clearInterval(state.poll);
-    state.poll = setInterval(refreshOrders, Number((w.BACKEND_CONFIG || {}).orderPollMs) || 10000);
+    state.poll = setInterval(function () { refreshOrders(true); }, Number((w.BACKEND_CONFIG || {}).orderPollMs) || 10000);
   }
   async function refreshOrders(announce) {
     try {
-      var before = state.orders.length ? state.orders[0].id : null;
-      state.orders = await B.listOrders(300);
+      var next = await B.listOrders(300);
+      var fresh = state.ordersReady ? next.filter(function (order) { return order.status === "new" && !state.orderIds[order.id]; }) : [];
+      state.orders = next;
+      state.orderIds = {};
+      next.forEach(function (order) { state.orderIds[order.id] = true; });
+      state.ordersReady = true;
       renderOrders();
       $("liveState").innerHTML = "<i></i> متصل مباشرة";
-      if (announce && before && state.orders[0] && state.orders[0].id !== before) notifyNew();
+      if (announce && fresh.length) notifyNew(fresh[0], fresh.length);
     } catch (err) { $("liveState").textContent = "تعذّر التحديث — يعاد تلقائيًا"; }
   }
-  function notifyNew() {
+  function ensureAudio() {
+    if (!soundOn) return null;
+    var AudioCtx = w.AudioContext || w.webkitAudioContext;
+    if (!AudioCtx) return null;
+    if (!audio) audio = new AudioCtx();
+    if (audio.state === "suspended") audio.resume().catch(function () {});
+    return audio;
+  }
+  function playOrderBell() {
+    var ctx = ensureAudio();
+    if (!ctx || ctx.state !== "running") return;
+    var now = ctx.currentTime;
+    [0, .19].forEach(function (delay, index) {
+      var osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = index ? "sine" : "triangle";
+      osc.frequency.setValueAtTime(index ? 1760 : 1320, now + delay);
+      osc.frequency.exponentialRampToValueAtTime(index ? 1320 : 990, now + delay + .32);
+      gain.gain.setValueAtTime(.0001, now + delay);
+      gain.gain.exponentialRampToValueAtTime(index ? .12 : .16, now + delay + .012);
+      gain.gain.exponentialRampToValueAtTime(.0001, now + delay + .48);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(now + delay); osc.stop(now + delay + .5);
+    });
+  }
+  function showOrderArrival(order, count) {
+    var el = $("orderArrival");
+    if (!el) {
+      el = d.createElement("div"); el.id = "orderArrival"; el.className = "order-arrival";
+      el.setAttribute("role", "status"); el.setAttribute("aria-live", "assertive"); d.body.appendChild(el);
+    }
+    el.innerHTML = '<span class="bell" aria-hidden="true">🔔</span><span><b>' + (count > 1 ? count + ' طلبات جديدة' : 'طلب جديد #' + esc(order.order_number)) + '</b><span>طاولة ' + esc(order.table_no) + ' · ' + money(order.total) + ' ر.س</span></span>';
+    el.classList.add("on"); clearTimeout(el._hide); el._hide = setTimeout(function () { el.classList.remove("on"); }, 5200);
+  }
+  function notifyNew(order, count) {
     $("bdgHome").textContent = state.orders.filter(function (o) { return o.status === "new"; }).length;
     $("bdgHome").classList.remove("hide");
+    playOrderBell();
+    showOrderArrival(order, count);
     if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
+  }
+  function syncSoundButton() {
+    var button = $("soundToggle");
+    button.setAttribute("aria-pressed", String(soundOn));
+    button.setAttribute("aria-label", soundOn ? "إيقاف صوت الطلبات" : "تشغيل صوت الطلبات");
+    button.querySelector("span").textContent = soundOn ? "🔔" : "🔕";
+  }
+  function toggleSound() {
+    soundOn = !soundOn;
+    localStorage.setItem("luxurycrop.admin.sound", soundOn ? "on" : "off");
+    syncSoundButton();
+    if (soundOn) { ensureAudio(); playOrderBell(); }
   }
   function orderCard(o) {
     var items = (o.order_items || []).map(function (x) { return x.quantity + "× " + esc(x.item_name) + (x.note ? " — " + esc(x.note) : ""); }).join(" · ");
@@ -237,6 +291,10 @@
     finally { save.disabled = false; save.textContent = "حفظ كلمة المرور"; }
   }
   function wire() {
+    syncSoundButton();
+    $("soundToggle").addEventListener("click",toggleSound);
+    d.addEventListener("pointerdown",ensureAudio,{once:true});
+    d.addEventListener("keydown",ensureAudio,{once:true});
     $("adminLogin").addEventListener("submit",login);
     $("invitePasswordBtn").addEventListener("click",finishInvite);
     $("adminLogout").addEventListener("click",async function(){await B.signOut();location.reload();});
