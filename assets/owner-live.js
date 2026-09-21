@@ -4,7 +4,7 @@
   var $ = function (id) { return d.getElementById(id); };
   var initialAuthHash = w.location.hash;
   var state = { orders: [], products: [], offers: [], settings: null, edit: null, unsubscribe: null, poll: null, orderIds: {}, ordersReady: false };
-  var audio = null, soundOn = localStorage.getItem("luxurycrop.admin.sound") !== "off";
+  var soundOn = localStorage.getItem("luxurycrop.admin.sound") !== "off", audioUnlocked = false;
   var STATUS = { new: "جديد", preparing: "قيد التحضير", ready: "جاهز", completed: "مكتمل", cancelled: "ملغي" };
   var esc = function (v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]; }); };
   var money = function (v) { return Number(v || 0).toLocaleString("ar-SA", { maximumFractionDigits: 2 }); };
@@ -129,29 +129,26 @@
       if (announce && fresh.length) notifyNew(fresh[0], fresh.length);
     } catch (err) { $("liveState").textContent = "تعذّر التحديث — يعاد تلقائيًا"; }
   }
-  function ensureAudio() {
-    if (!soundOn) return null;
-    var AudioCtx = w.AudioContext || w.webkitAudioContext;
-    if (!AudioCtx) return null;
-    if (!audio) audio = new AudioCtx();
-    if (audio.state === "suspended") audio.resume().catch(function () {});
-    return audio;
+  function orderBell() {
+    var bell = $("orderBellAudio");
+    if (bell) bell.volume = .86;
+    return bell;
+  }
+  function unlockAudio() {
+    if (!soundOn || audioUnlocked) return;
+    var bell = orderBell(); if (!bell) return;
+    var oldVolume = bell.volume; bell.volume = 0;
+    var started = bell.play();
+    if (started && started.then) started.then(function () {
+      bell.pause(); bell.currentTime = 0; bell.volume = oldVolume; audioUnlocked = true;
+    }).catch(function () { bell.volume = oldVolume; });
   }
   function playOrderBell() {
-    var ctx = ensureAudio();
-    if (!ctx || ctx.state !== "running") return;
-    var now = ctx.currentTime;
-    [0, .19].forEach(function (delay, index) {
-      var osc = ctx.createOscillator(), gain = ctx.createGain();
-      osc.type = index ? "sine" : "triangle";
-      osc.frequency.setValueAtTime(index ? 1760 : 1320, now + delay);
-      osc.frequency.exponentialRampToValueAtTime(index ? 1320 : 990, now + delay + .32);
-      gain.gain.setValueAtTime(.0001, now + delay);
-      gain.gain.exponentialRampToValueAtTime(index ? .12 : .16, now + delay + .012);
-      gain.gain.exponentialRampToValueAtTime(.0001, now + delay + .48);
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(now + delay); osc.stop(now + delay + .5);
-    });
+    if (!soundOn) return;
+    var bell = orderBell(); if (!bell) return;
+    bell.pause(); bell.currentTime = 0; bell.volume = .86;
+    var started = bell.play();
+    if (started && started.catch) started.catch(function () {});
   }
   function showOrderArrival(order, count) {
     var el = $("orderArrival");
@@ -179,7 +176,7 @@
     soundOn = !soundOn;
     localStorage.setItem("luxurycrop.admin.sound", soundOn ? "on" : "off");
     syncSoundButton();
-    if (soundOn) { ensureAudio(); playOrderBell(); }
+    if (soundOn) { audioUnlocked = true; playOrderBell(); }
   }
   function orderCard(o) {
     var items = (o.order_items || []).map(function (x) { return x.quantity + "× " + esc(x.item_name) + (x.note ? " — " + esc(x.note) : ""); }).join(" · ");
@@ -293,8 +290,8 @@
   function wire() {
     syncSoundButton();
     $("soundToggle").addEventListener("click",toggleSound);
-    d.addEventListener("pointerdown",ensureAudio,{once:true});
-    d.addEventListener("keydown",ensureAudio,{once:true});
+    d.addEventListener("pointerdown",unlockAudio,{once:true});
+    d.addEventListener("keydown",unlockAudio,{once:true});
     $("adminLogin").addEventListener("submit",login);
     $("invitePasswordBtn").addEventListener("click",finishInvite);
     $("adminLogout").addEventListener("click",async function(){await B.signOut();location.reload();});
