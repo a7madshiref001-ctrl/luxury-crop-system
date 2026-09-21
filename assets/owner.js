@@ -21,7 +21,6 @@
     reviews:   ["التقييمات", "الفلتر يحمي تقييمك في قوقل"],
     control:   ["تحكّم فوري", "غيّر المنيو وانت قاعد — بدون طباعة"],
     catalog:   ["المنتجات والعروض", "عدّل المنيو والتوفر والأسعار بسهولة"],
-    roi:       ["حاسبة العائد", "السيستم يرجّع فلوسه في كم يوم"],
     links:     ["الروابط والإعدادات", "لينك العميل، الـQR، والإعدادات السريعة"]
   };
 
@@ -34,14 +33,10 @@
     demo = liveBackend ? false : F.get(F.K.demo, true);
     $("bName").textContent = M.brand.nameAr;
 
-    $("range").addEventListener("change", function () { days = +this.value; render(); });
-    ["rOrd", "rAvg2", "rUp2", "rPrice"].forEach(function (id) {
-      $(id).addEventListener("input", roi);
-    });
-    $("rOrd").value = S.roi.ordersPerDay;
-    $("rAvg2").value = S.roi.avgTicket;
-    $("rUp2").value = S.roi.upliftEGP;
-    $("rPrice").value = S.roi.priceEGP;
+    $("range").addEventListener("change", requestRangeChange);
+    $("rangePinForm").addEventListener("submit", confirmRangeChange);
+    $("rangePinCancel").addEventListener("click", cancelRangeChange);
+    $("rangePinClose").addEventListener("click", cancelRangeChange);
 
     $("soSearch").addEventListener("input", function () { soldOutList(this.value); });
     $("prSearch").addEventListener("input", function () { priceList(this.value); });
@@ -74,9 +69,27 @@
 
     F.onMsg(function () { render(); });
     render();
-    roi();
-    staticLists();
   }
+
+  var pendingDays = null;
+  function requestRangeChange() {
+    pendingDays = +this.value;
+    this.value = String(days);
+    $("rangePin").value = "";
+    $("rangePinError").textContent = "";
+    $("rangePinDialog").showModal();
+    setTimeout(function () { $("rangePin").focus(); }, 30);
+  }
+  function confirmRangeChange(e) {
+    e.preventDefault();
+    if ($("rangePin").value !== "1212") { $("rangePinError").textContent = "الرمز غير صحيح"; return; }
+    days = pendingDays || days;
+    $("range").value = String(days);
+    $("rangePinDialog").close();
+    render();
+    d.dispatchEvent(new CustomEvent("luxurycrop:range", { detail:{ days:days } }));
+  }
+  function cancelRangeChange() { pendingDays = null; $("rangePinDialog").close(); $("range").value = String(days); }
 
   /* ---------------- التنقّل ---------------- */
   function go(p) {
@@ -120,8 +133,7 @@
   function home() {
     /* الكارت الكبير = إجمالي المبيعات في الفترة المختارة،
        والسطر اللي تحته بيوضّح كام منها جابها السيستم لوحده */
-    $("hLb").textContent = days === 30 ? "إجمالي المبيعات الشهرية"
-      : "إجمالي المبيعات — آخر " + (days === 7 ? "٧ أيام" : "٦٠ يوم");
+    $("hLb").textContent = days === 1 ? "إجمالي مبيعات اليوم" : days === 7 ? "إجمالي المبيعات الأسبوعية" : "إجمالي المبيعات الشهرية";
     $("hRev").textContent = money(o.revenue);
     var share = o.revenue ? Math.round(o.addedMoney / o.revenue * 100) : 0;
     $("hD").innerHTML = dt(o.revenue, prev.revenue) +
@@ -376,35 +388,6 @@
       return '<div class="ctl"><div class="nm"><b>' + esc(r.n) + "</b><span>الأصلي " + r.price + " " + CUR + "</span></div>" +
         '<input class="pin mono" type="number" min="0" max="10000" step="1" value="' + v + '" data-price="' + esc(r.n) + '"></div>';
     }).join("");
-  }
-
-  /* ---------------- ٨) العائد ---------------- */
-  function roi() {
-    var ord = +$("rOrd").value || 0, avg = +$("rAvg2").value || 0;
-    var up = +$("rUp2").value || 0, pr = +$("rPrice").value || 1;
-    var mo = ord * up * 30, yr = mo * 12;
-    $("oMonth").textContent = money(mo);
-    $("oYear").textContent = money(yr);
-    $("oDays").textContent = mo ? Math.max(1, Math.ceil(pr / (mo / 30))) : "—";
-    $("oRoi").textContent = pr ? (yr / pr).toFixed(1) : "—";
-    $("oHalf").textContent = money(mo / 2);
-    $("oHalfD").textContent = mo ? Math.max(1, Math.ceil(pr / (mo / 60))) : "—";
-  }
-
-  function staticLists() {
-    var B = [["الأصناف الميتة", "مش معروفة"], ["أوقات الذروة", "بالإحساس"], ["الاقتراح للعميل", "على مزاج الكاشير"],
-             ["أرقام العملاء", "صفر"], ["الشكوى", "تروح قوقل على طول"], ["تغيير سعر", "إعادة طباعة"]];
-    var A = [["الأصناف الميتة", "بالاسم والرقم"], ["أوقات الذروة", "رسم بياني بالساعة"], ["الاقتراح للعميل", "تلقائي مع كل صنف"],
-             ["أرقام العملاء", "قاعدة تكبر لحالها"], ["الشكوى", "توصلك انت أول"], ["تغيير سعر", "ثانية واحدة"]];
-    var G = [["منيو QR كامل", "بهوية مكانك"], ["لوحة أرقام", "الصفحة اللي انت فيها"], ["محرّك اقتراحات", "أب-سيل + إضافات + كومبو"],
-             ["استقبال الطلبات", "واتساب برقم الطاولة"], ["فلتر تقييمات", "يحمي تقييمك في قوقل"], ["ولاء وكوبونات", "ترجّع العميل"]];
-    var row = function (a, color) {
-      return '<div class="rw"><div class="nm"><b>' + a[0] + "</b></div>" +
-        '<div class="vl" style="font-size:12px;font-weight:600' + (color ? ";color:var(--mint)" : ";color:var(--txt-3)") + '">' + a[1] + "</div></div>";
-    };
-    $("before").innerHTML = B.map(function (a) { return row(a, 0); }).join("");
-    $("after").innerHTML = A.map(function (a) { return row(a, 1); }).join("");
-    $("whatyouget").innerHTML = G.map(function (a) { return row(a, 0); }).join("");
   }
 
   /* ---------------- ٩) الروابط ---------------- */

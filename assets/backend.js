@@ -43,7 +43,7 @@
     var c = init();
     if (!c) return null;
     var res = await Promise.all([
-      c.from("products").select("id,name,description,price,size_prices,is_active,sold_out,sort_order").order("sort_order"),
+      c.from("products").select("id,name,description,section_id,image_url,price,size_prices,is_active,sold_out,sort_order").order("sort_order"),
       c.from("offers").select("id,name,description,image_url,price,original_price,parts,is_active,sort_order").order("sort_order"),
       c.from("addons").select("id,section_id,name,price,is_active,sort_order").order("sort_order"),
       c.from("store_settings").select("tables_count,ordering_open").eq("id", 1).maybeSingle()
@@ -54,23 +54,32 @@
 
   function applyCatalog(menu, sales, data) {
     if (!data) return;
-    var byId = {};
+    var byId = {}, seen = {};
     (data.products || []).forEach(function (p) { byId[p.id] = p; });
     (menu.sections || []).forEach(function (section) {
       (section.cats || []).forEach(function (cat) {
         cat.items = (cat.items || []).filter(function (item) {
           var p = byId[item.k];
           if (!p) return true;
+          seen[item.k] = true;
           item.n = cleanText(p.name, 120) || item.n;
           item.d = cleanText(p.description, 500);
           item._remoteSoldOut = !!p.sold_out;
           item._dbId = p.id;
+          item._remoteImage = cleanText(p.image_url, 500);
           if (Array.isArray(p.size_prices) && p.size_prices.length) item.s = p.size_prices.map(Number);
           else item.p = Number(p.price);
           return p.is_active !== false;
         });
       });
       section.cats = (section.cats || []).filter(function (cat) { return cat.items.length; });
+    });
+    (data.products || []).filter(function (p) { return p.is_active !== false && !seen[p.id]; }).forEach(function (p) {
+      var section = (menu.sections || []).find(function (x) { return x.id === p.section_id; });
+      if (!section || !section.cats || !section.cats.length) return;
+      section.cats[0].items.push({ k:p.id, n:cleanText(p.name,120), d:cleanText(p.description,500), p:Number(p.price),
+        s:Array.isArray(p.size_prices)&&p.size_prices.length?p.size_prices.map(Number):undefined,
+        _dbId:p.id, _remoteImage:cleanText(p.image_url,500), _remoteSoldOut:!!p.sold_out });
     });
     menu.sections = (menu.sections || []).filter(function (section) { return section.cats.length; });
     if (data.offers && data.offers.length) {
@@ -171,6 +180,7 @@
     var data = {
       id: cleanText(product.id, 80), name: cleanText(product.name, 120),
       description: cleanText(product.description, 500), section_id: cleanText(product.section_id, 50), price: Number(product.price),
+      image_url: cleanText(product.image_url, 500),
       size_prices: Array.isArray(product.size_prices) ? product.size_prices.map(Number) : null,
       is_active: product.is_active !== false, sold_out: !!product.sold_out,
       sort_order: Number(product.sort_order) || 0, updated_at: new Date().toISOString()
@@ -210,8 +220,24 @@
     return out.data;
   }
 
+  async function uploadProductImage(productId, file) {
+    var path = cleanText(productId, 80) + "/cover.webp";
+    var bucket = init().storage.from("product-images");
+    var out = await bucket.upload(path, file, { upsert:true, contentType:"image/webp", cacheControl:"3600" });
+    if (out.error) throw out.error;
+    var url = bucket.getPublicUrl(path).data.publicUrl;
+    return url + "?v=" + Date.now();
+  }
+
+  async function clearAllOrders() {
+    var out = await init().rpc("clear_all_orders");
+    if (out.error) throw out.error;
+    return out.data;
+  }
+
   w.Backend = { configured: configured, init: init, loadCatalog: loadCatalog, applyCatalog: applyCatalog,
     placeOrder: placeOrder, signIn: signIn, signOut: signOut, session: session, updatePassword: updatePassword,
     listOrders: listOrders, updateOrderStatus: updateOrderStatus, subscribeOrders: subscribeOrders,
-    saveProduct: saveProduct, saveOffer: saveOffer, adminCatalog: adminCatalog, saveSettings: saveSettings };
+    saveProduct: saveProduct, saveOffer: saveOffer, adminCatalog: adminCatalog, saveSettings: saveSettings,
+    uploadProductImage: uploadProductImage, clearAllOrders: clearAllOrders };
 })(window);

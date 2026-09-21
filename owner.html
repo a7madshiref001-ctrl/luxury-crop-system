@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>لوحة التحكّم — محصول فاخر</title>
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https://api.qrserver.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://api.qrserver.com https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
 <meta name="theme-color" content="#F2ECDC" id="metaTheme">
 <link rel="icon" href="assets/logo.png">
 <link rel="stylesheet" href="assets/fonts.css?v=20260920-qa">
@@ -60,7 +60,6 @@
     <div class="ttl">التحكّم</div>
     <button class="nv" data-p="control"><span class="e">🎛️</span> تحكّم فوري</button>
     <button class="nv" data-p="catalog"><span class="e">☕</span> المنتجات والعروض</button>
-    <button class="nv" data-p="roi"><span class="e">💰</span> حاسبة العائد</button>
     <button class="nv" data-p="links"><span class="e">🔗</span> الروابط والإعدادات</button>
   </div>
 
@@ -90,9 +89,9 @@
     </button>
     <span class="live" id="liveState"><i></i> متصل مباشرة</span>
     <select class="selr" id="range" aria-label="الفترة الزمنية للتقارير">
-      <option value="7">آخر ٧ أيام</option>
-      <option value="30" selected>آخر ٣٠ يوم</option>
-      <option value="60">آخر ٦٠ يوم</option>
+      <option value="1">اليوم</option>
+      <option value="7">الأسبوع</option>
+      <option value="30" selected>الشهر</option>
     </select>
   </div>
 
@@ -297,7 +296,7 @@
   <div class="pane" id="p-catalog">
     <div class="grid g2" style="margin-bottom:16px">
       <div class="card">
-        <h2>☕ المنتجات</h2>
+        <div class="catalog-head"><h2>☕ المنتجات</h2><button class="btn btn-p btn-s" id="addProduct" type="button">+ إضافة منتج</button></div>
         <div class="sub">غيّر الاسم والوصف والسعر والتوفر، ويظهر التعديل في المنيو بعد الحفظ.</div>
         <input class="sfld" id="liveProductSearch" placeholder="🔍 ابحث عن منتج…">
         <div id="liveProductList" class="editor-list"></div>
@@ -314,36 +313,8 @@
         <label>عدد الطاولات<input id="liveTables" type="number" min="1" max="500"></label>
         <label class="check-line"><input id="liveOrdering" type="checkbox"> استقبال الطلبات مفتوح</label>
         <button class="btn btn-p btn-s" id="saveStoreSettings">حفظ الإعدادات</button>
+        <button class="btn btn-g btn-s danger-soft" id="clearOrders" type="button">تصفير الطلبات التجريبية</button>
       </div>
-    </div>
-  </div>
-
-  <!-- ---------- حاسبة العائد ---------- -->
-  <div class="pane" id="p-roi">
-    <div class="card" style="margin-bottom:16px">
-      <h2>💰 السيستم يرجّع فلوسه في كم يوم؟</h2>
-      <div class="sub">غيّر الأرقام بأرقام مكانك — الحساب يتظبط لحظيًا</div>
-      <div class="cr"><label>عدد الطلبات في اليوم</label><input id="rOrd" type="number" value="55"></div>
-      <div class="cr"><label>متوسط الفاتورة الحالي (ر.س)</label><input id="rAvg2" type="number" value="22"></div>
-      <div class="cr"><label>الزيادة المتوقعة في الفاتورة (ر.س)</label><input id="rUp2" type="number" value="1.5"></div>
-      <div class="cr"><label>سعر السيستم في السنة (ر.س)</label><input id="rPrice" type="number" value="1200"></div>
-      <div class="cout">
-        <div class="lb">الزيادة في المبيعات شهريًا</div>
-        <div class="v"><span id="oMonth">0</span> ر.س</div>
-        <div class="d">
-          سنويًا <b id="oYear">0</b> ر.س · يرجّع تكلفته في <b id="oDays">0</b> يوم · العائد <b id="oRoi">0</b>×
-        </div>
-        <div class="d" style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px">
-          وحتى لو الزيادة طلعت <b>نص</b> الرقم ده بس: <b id="oHalf">0</b> ر.س شهريًا — وبرضه يرجّع تكلفته في <b id="oHalfD">0</b> يوم
-        </div>
-      </div>
-      <div class="note">الحساب مبني على زيادة متوسط الفاتورة بس. ما هو محسوب فيه: الأصناف الميتة اللي بتوفّرها، ولا العملاء اللي بيرجعون بالكوبون والولاء، ولا تقييمات قوقل اللي بتجيب زباين جدد.</div>
-    </div>
-
-    <div class="grid g3">
-      <div class="card"><h3>📉 قبل السيستم</h3><div class="rows" id="before"></div></div>
-      <div class="card"><h3>📈 بعد السيستم</h3><div class="rows" id="after"></div></div>
-      <div class="card"><h3>🧾 اللي بتاخده</h3><div class="rows" id="whatyouget"></div></div>
     </div>
   </div>
 
@@ -396,15 +367,25 @@
   </form>
 </dialog>
 
+<dialog id="rangePinDialog" class="editor-dialog pin-dialog">
+  <form id="rangePinForm">
+    <div class="dialog-head"><h2>تأكيد عرض التحليلات</h2><button type="button" id="rangePinClose" aria-label="إغلاق">×</button></div>
+    <p class="sub">أدخل رمز الإدارة للتبديل بين التحليل اليومي والأسبوعي والشهري.</p>
+    <label class="edit-field">رمز الإدارة<input id="rangePin" type="password" inputmode="numeric" autocomplete="off" maxlength="4" pattern="[0-9]{4}" required></label>
+    <div id="rangePinError" class="login-error" role="alert" aria-live="polite"></div>
+    <div class="dialog-actions"><button class="btn btn-g" type="button" id="rangePinCancel">إلغاء</button><button class="btn btn-p" type="submit">عرض التحليل</button></div>
+  </form>
+</dialog>
+
 <audio id="orderBellAudio" preload="auto" src="assets/audio/order-up-bell.mp3?v=20260921"></audio>
 
 <script defer src="data/menu.js?v=20260921-approved-menu"></script>
 <script defer src="data/sales.js?v=20260921-combo-images"></script>
 <script defer src="data/backend-config.js?v=20260921-orders"></script>
 <script defer src="assets/vendor/supabase-2.116.0.js?v=2.116.0"></script>
-<script defer src="assets/backend.js?v=20260921-invite"></script>
+<script defer src="assets/backend.js?v=20260921-products"></script>
 <script defer src="assets/sys.js?v=20260921-approved-menu"></script>
-<script defer src="assets/owner.js?v=20260921-orders"></script>
-<script defer src="assets/owner-live.js?v=20260921-custom-bell"></script>
+<script defer src="assets/owner.js?v=20260921-analysis-pin"></script>
+<script defer src="assets/owner-live.js?v=20260921-products-images"></script>
 </body>
 </html>

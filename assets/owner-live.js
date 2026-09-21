@@ -1,10 +1,11 @@
 (function (w, d) {
   "use strict";
-  var B = w.Backend;
+  var B = w.Backend, M = w.MENU;
   var $ = function (id) { return d.getElementById(id); };
   var initialAuthHash = w.location.hash;
   var state = { orders: [], products: [], offers: [], settings: null, edit: null, unsubscribe: null, poll: null, orderIds: {}, ordersReady: false };
   var soundOn = localStorage.getItem("luxurycrop.admin.sound") !== "off", audioUnlocked = false;
+  var bellContext = null, bellBuffer = null, bellBufferPromise = null;
   var STATUS = { new: "جديد", preparing: "قيد التحضير", ready: "جاهز", completed: "مكتمل", cancelled: "ملغي" };
   var esc = function (v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]; }); };
   var money = function (v) { return Number(v || 0).toLocaleString("ar-SA", { maximumFractionDigits: 2 }); };
@@ -134,21 +135,52 @@
     if (bell) bell.volume = .86;
     return bell;
   }
+  function audioContext() {
+    var AudioCtx = w.AudioContext || w.webkitAudioContext;
+    if (!AudioCtx) return null;
+    if (!bellContext) bellContext = new AudioCtx();
+    return bellContext;
+  }
+  function loadBell() {
+    if (bellBuffer) return Promise.resolve(bellBuffer);
+    if (bellBufferPromise) return bellBufferPromise;
+    var ctx = audioContext(), bell = orderBell();
+    if (!ctx || !bell) return Promise.reject(new Error("audio_unavailable"));
+    bellBufferPromise = fetch(bell.currentSrc || bell.src).then(function (response) {
+      if (!response.ok) throw new Error("audio_load_failed");
+      return response.arrayBuffer();
+    }).then(function (data) { return ctx.decodeAudioData(data); }).then(function (buffer) {
+      bellBuffer = buffer; return buffer;
+    }).catch(function (err) { bellBufferPromise = null; throw err; });
+    return bellBufferPromise;
+  }
   function unlockAudio() {
     if (!soundOn || audioUnlocked) return;
-    var bell = orderBell(); if (!bell) return;
-    var oldVolume = bell.volume; bell.volume = 0;
-    var started = bell.play();
-    if (started && started.then) started.then(function () {
-      bell.pause(); bell.currentTime = 0; bell.volume = oldVolume; audioUnlocked = true;
-    }).catch(function () { bell.volume = oldVolume; });
+    var ctx = audioContext(); if (!ctx) return;
+    var resumed = ctx.state === "suspended" ? ctx.resume() : Promise.resolve();
+    resumed.then(function () { audioUnlocked = true; return loadBell(); }).catch(function () {});
   }
-  function playOrderBell() {
+  function playOrderBell(count) {
     if (!soundOn) return;
-    var bell = orderBell(); if (!bell) return;
-    bell.pause(); bell.currentTime = 0; bell.volume = .86;
-    var started = bell.play();
-    if (started && started.catch) started.catch(function () {});
+    count = Math.max(1, Number(count) || 1);
+    var ctx = audioContext(); if (!ctx) return;
+    var resumed = ctx.state === "suspended" ? ctx.resume() : Promise.resolve();
+    resumed.then(function () { return loadBell(); }).then(function (buffer) {
+      var startAt = ctx.currentTime + .015;
+      var volume = Math.min(.86, .96 / Math.sqrt(count));
+      for (var i = 0; i < count; i++) {
+        var source = ctx.createBufferSource(), gain = ctx.createGain();
+        source.buffer = buffer; gain.gain.value = volume;
+        source.connect(gain); gain.connect(ctx.destination);
+        source.start(startAt + i * .045);
+      }
+    }).catch(function () {
+      var bell = orderBell(); if (!bell) return;
+      for (var i = 0; i < count; i++) {
+        var copy = bell.cloneNode(true); copy.volume = Math.min(.86, .96 / Math.sqrt(count));
+        setTimeout(function (node) { var started = node.play(); if (started && started.catch) started.catch(function () {}); }, i * 45, copy);
+      }
+    });
   }
   function showOrderArrival(order, count) {
     var el = $("orderArrival");
@@ -162,7 +194,7 @@
   function notifyNew(order, count) {
     $("bdgHome").textContent = state.orders.filter(function (o) { return o.status === "new"; }).length;
     $("bdgHome").classList.remove("hide");
-    playOrderBell();
+    playOrderBell(count);
     showOrderArrival(order, count);
     if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
   }
@@ -176,7 +208,7 @@
     soundOn = !soundOn;
     localStorage.setItem("luxurycrop.admin.sound", soundOn ? "on" : "off");
     syncSoundButton();
-    if (soundOn) { audioUnlocked = true; playOrderBell(); }
+    if (soundOn) { unlockAudio(); playOrderBell(1); }
   }
   function orderCard(o) {
     var items = (o.order_items || []).map(function (x) { return x.quantity + "× " + esc(x.item_name) + (x.note ? " — " + esc(x.note) : ""); }).join(" · ");
@@ -188,31 +220,37 @@
       ((o.customer_name || o.customer_phone) ? '<div class="order-customer">' + esc(o.customer_name || "بدون اسم") + (o.customer_phone ? ' · <span dir="ltr">' + esc(o.customer_phone) + '</span>' : '') + '</div>' : '') +
       '<div class="status-row" role="group" aria-label="حالة الطلب">' + buttons + '</div></article>';
   }
+  function periodOrders() {
+    var value=Number($("range")&&$("range").value)||30, now=new Date(), cutoff;
+    if(value===1) cutoff=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    else cutoff=new Date(now.getTime()-value*86400000);
+    return state.orders.filter(function(o){return new Date(o.created_at)>=cutoff;});
+  }
   function renderOrders() {
-    var all = state.orders, active = all.filter(function (x) { return x.status !== "cancelled"; });
+    var all = state.orders, report=periodOrders(), active = report.filter(function (x) { return x.status !== "cancelled"; });
     var revenue = active.reduce(function (a, x) { return a + Number(x.total); }, 0);
     var avg = active.length ? revenue / active.length : 0;
     $("ordersList").innerHTML = all.map(orderCard).join("") || '<div class="empty-live">لا توجد طلبات حتى الآن</div>';
     $("homeOrders").innerHTML = all.slice(0, 5).map(orderCard).join("") || '<div class="empty-live">أول طلب هيظهر هنا مباشرة</div>';
-    $("oCount").textContent = all.length; $("oValue").textContent = money(revenue); $("oAvg").textContent = money(avg); $("oModes").textContent = all.length + " طاولة";
-    $("hRev").textContent = money(revenue); $("kOrd").textContent = all.length; $("kAvg").textContent = money(avg);
+    $("oCount").textContent = report.length; $("oValue").textContent = money(revenue); $("oAvg").textContent = money(avg); $("oModes").textContent = report.length + " طاولة";
+    $("hRev").textContent = money(revenue); $("kOrd").textContent = report.length; $("kAvg").textContent = money(avg);
     var fresh = all.filter(function (x) { return x.status === "new"; }).length;
     $("bdgHome").textContent = fresh; $("bdgHome").classList.toggle("hide", !fresh);
     $("demoChip").textContent = "● متصل مباشرة"; $("demoChip").classList.add("real");
-    renderCustomers();
-    renderItemStats();
+    renderCustomers(report);
+    renderItemStats(report);
   }
-  function renderItemStats() {
+  function renderItemStats(report) {
     var byItem = {};
-    state.orders.filter(function(o){return o.status!=="cancelled";}).forEach(function(o){(o.order_items||[]).forEach(function(x){var r=byItem[x.item_name]||{name:x.item_name,qty:0,total:0};r.qty+=Number(x.quantity);r.total+=Number(x.line_total);byItem[x.item_name]=r;});});
+    (report||periodOrders()).filter(function(o){return o.status!=="cancelled";}).forEach(function(o){(o.order_items||[]).forEach(function(x){var r=byItem[x.item_name]||{name:x.item_name,qty:0,total:0};r.qty+=Number(x.quantity);r.total+=Number(x.line_total);byItem[x.item_name]=r;});});
     var rows=Object.values(byItem).sort(function(a,b){return b.total-a.total;});
     var html=rows.slice(0,8).map(function(x,i){return '<div class="rw"><div class="ix">'+(i+1)+'</div><div class="nm"><b>'+esc(x.name)+'</b><span>'+x.qty+' قطعة</span></div><div class="vl">'+money(x.total)+' ر.س</div></div>';}).join("")||'<div class="empty-live">تظهر النتائج بعد وصول الطلبات</div>';
     if($("homeTop"))$("homeTop").innerHTML=html;if($("topRev"))$("topRev").innerHTML=html;
-    if($("sRev"))$("sRev").textContent=money(state.orders.filter(function(o){return o.status!=="cancelled";}).reduce(function(a,o){return a+Number(o.total);},0));
+    if($("sRev"))$("sRev").textContent=money((report||periodOrders()).filter(function(o){return o.status!=="cancelled";}).reduce(function(a,o){return a+Number(o.total);},0));
   }
-  function renderCustomers() {
+  function renderCustomers(report) {
     var map = {};
-    state.orders.forEach(function (o) { if (!o.customer_phone) return; var x = map[o.customer_phone] || { name:o.customer_name, phone:o.customer_phone, spent:0, count:0 }; x.spent += Number(o.total); x.count++; map[o.customer_phone] = x; });
+    (report||periodOrders()).forEach(function (o) { if (!o.customer_phone) return; var x = map[o.customer_phone] || { name:o.customer_name, phone:o.customer_phone, spent:0, count:0 }; x.spent += Number(o.total); x.count++; map[o.customer_phone] = x; });
     var rows = Object.values(map);
     $("cCount").textContent = rows.length;
     $("cAvg").textContent = money(rows.length ? rows.reduce(function(a,x){return a+x.spent;},0)/rows.length : 0);
@@ -240,11 +278,28 @@
     $("liveOfferList").innerHTML = state.offers.map(function(o){return '<div class="editor-row"><div><b>'+esc(o.name)+'</b><span>'+money(o.price)+' بدل '+money(o.original_price)+' ر.س · '+(o.is_active?'ظاهر':'مخفي')+'</span></div><button class="btn btn-g btn-s" data-edit-offer="'+esc(o.id)+'">تعديل</button></div>';}).join("") || '<div class="empty-live">لا توجد عروض</div>';
   }
   function field(label, name, value, type) { return '<label class="edit-field">'+label+'<input name="'+name+'" type="'+(type||"text")+'" value="'+esc(value)+'"></label>'; }
+  function sectionOptions(selected) {
+    return (M.sections || []).map(function(s){return '<option value="'+esc(s.id)+'" '+(s.id===selected?'selected':'')+'>'+esc(s.title)+'</option>';}).join("");
+  }
   function openProduct(id) {
-    var p = state.products.find(function(x){return x.id===id;}); if(!p)return;
-    state.edit={kind:"product",data:p}; $("editorTitle").textContent="تعديل المنتج";
-    $("editorFields").innerHTML=field("الاسم","name",p.name)+field("الوصف","description",p.description)+field("السعر الأساسي","price",p.price,"number")+field("أسعار الأحجام مفصولة بفاصلة","sizes",Array.isArray(p.size_prices)?p.size_prices.join(", "):"")+ '<label class="check-line"><input name="active" type="checkbox" '+(p.is_active?'checked':'')+'> ظاهر في المنيو</label><label class="check-line"><input name="sold" type="checkbox" '+(p.sold_out?'checked':'')+'> غير متاح حاليًا</label>';
+    var p = id ? state.products.find(function(x){return x.id===id;}) : null;
+    if (!p) p={id:"p_"+(w.crypto&&crypto.randomUUID?crypto.randomUUID().replace(/-/g,""):Date.now()),name:"",description:"",section_id:(M.sections[0]||{}).id||"hot",price:0,size_prices:null,image_url:"",is_active:true,sold_out:false,sort_order:(state.products.length+1)*10};
+    state.edit={kind:"product",data:p,newItem:!id}; $("editorTitle").textContent=id?"تعديل المنتج":"إضافة منتج";
+    var preview=p.image_url?'<img class="product-preview" src="'+esc(p.image_url)+'" alt="صورة المنتج الحالية">':'<div class="product-preview empty">لا توجد صورة بعد</div>';
+    $("editorFields").innerHTML=field("الاسم","name",p.name)+field("الوصف","description",p.description)+
+      '<label class="edit-field">القسم<select name="section_id" required>'+sectionOptions(p.section_id)+'</select></label>'+
+      field("السعر الأساسي","price",p.price,"number")+field("أسعار الأحجام مفصولة بفاصلة","sizes",Array.isArray(p.size_prices)?p.size_prices.join(", "):"")+
+      '<label class="edit-field product-image-field">صورة المنتج (صورة واحدة)'+preview+'<input id="productImage" name="image" type="file" accept="image/jpeg,image/png,image/webp"><small>لو اخترت صورة جديدة هتستبدل الحالية تلقائيًا.</small></label>'+
+      '<label class="check-line"><input name="active" type="checkbox" '+(p.is_active?'checked':'')+'> ظاهر في المنيو</label><label class="check-line"><input name="sold" type="checkbox" '+(p.sold_out?'checked':'')+'> غير متاح حاليًا</label>';
     $("editorDialog").showModal();
+  }
+  async function prepareProductImage(file) {
+    if (!file) return null;
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type) || file.size > 8*1024*1024) throw new Error("invalid_image");
+    var bitmap=await createImageBitmap(file), max=1200, scale=Math.min(1,max/Math.max(bitmap.width,bitmap.height));
+    var canvas=d.createElement("canvas"); canvas.width=Math.max(1,Math.round(bitmap.width*scale)); canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+    canvas.getContext("2d",{alpha:false}).drawImage(bitmap,0,0,canvas.width,canvas.height); if(bitmap.close)bitmap.close();
+    return new Promise(function(resolve,reject){canvas.toBlob(function(blob){blob?resolve(blob):reject(new Error("image_convert_failed"));},"image/webp",.86);});
   }
   function openOffer(id) {
     var o=state.offers.find(function(x){return x.id===id;}); if(!o)return;
@@ -256,16 +311,27 @@
     e.preventDefault(); if(!state.edit)return;
     var f=new FormData(e.currentTarget), base=state.edit.data, save=$("editorSave"); save.disabled=true; save.textContent="جاري الحفظ…";
     try {
-      if(state.edit.kind==="product") await B.saveProduct(Object.assign({},base,{name:f.get("name"),description:f.get("description"),price:Number(f.get("price")),size_prices:String(f.get("sizes")||"").trim()?String(f.get("sizes")).split(",").map(Number):null,is_active:!!f.get("active"),sold_out:!!f.get("sold")}));
+      if(state.edit.kind==="product") {
+        var imageFile=f.get("image"), imageUrl=base.image_url||"";
+        if(imageFile&&imageFile.size){save.textContent="جاري تجهيز الصورة…";imageUrl=await B.uploadProductImage(base.id,await prepareProductImage(imageFile));save.textContent="جاري الحفظ…";}
+        await B.saveProduct(Object.assign({},base,{name:f.get("name"),description:f.get("description"),section_id:f.get("section_id"),image_url:imageUrl,price:Number(f.get("price")),size_prices:String(f.get("sizes")||"").trim()?String(f.get("sizes")).split(",").map(Number):null,is_active:!!f.get("active"),sold_out:!!f.get("sold")}));
+      }
       else await B.saveOffer(Object.assign({},base,{name:f.get("name"),description:f.get("description"),price:Number(f.get("price")),original_price:Number(f.get("original_price")),image_url:f.get("image_url"),parts:String(f.get("parts")||"").split(",").map(function(x){return x.trim();}).filter(Boolean),is_active:!!f.get("active")}));
       $("editorDialog").close(); await refreshCatalog();
-    } catch(err){alert("لم يتم الحفظ. راجع القيم وحاول مرة ثانية.");}
+    } catch(err){alert(String(err&&err.message)==="invalid_image"?"الصورة لازم تكون JPG أو PNG أو WebP وبحد أقصى 8 ميجا.":"لم يتم الحفظ. راجع القيم وحاول مرة ثانية.");}
     finally{save.disabled=false;save.textContent="حفظ التعديل";}
   }
   async function saveSettings() {
     var button=$("saveStoreSettings");button.disabled=true;
     try{await B.saveSettings({tables_count:Number($("liveTables").value),ordering_open:$("liveOrdering").checked});alert("تم حفظ إعدادات الطلبات ✅");}
     catch(err){alert("تعذّر حفظ الإعدادات");}finally{button.disabled=false;}
+  }
+  async function clearOrders() {
+    if (!w.confirm("سيتم حذف كل الطلبات الحالية نهائيًا وإعادة العدّاد من رقم 1. هل أنت متأكد؟")) return;
+    var button=$("clearOrders");button.disabled=true;button.textContent="جاري التصفير…";
+    try{await B.clearAllOrders();await refreshOrders();alert("تم تصفير كل الطلبات التجريبية ✅");}
+    catch(err){alert("تعذّر تصفير الطلبات. حاول مرة ثانية.");}
+    finally{button.disabled=false;button.textContent="تصفير الطلبات التجريبية";}
   }
   function openPasswordDialog() {
     $("passwordForm").reset();
@@ -300,8 +366,12 @@
     $("passwordCancel").addEventListener("click",function(){$("passwordDialog").close();});
     $("passwordForm").addEventListener("submit",savePassword);
     $("liveProductSearch").addEventListener("input",function(){renderProducts(this.value);});
+    $("addProduct").addEventListener("click",function(){openProduct("");});
     $("saveStoreSettings").addEventListener("click",saveSettings);
+    $("clearOrders").addEventListener("click",clearOrders);
     $("editorForm").addEventListener("submit",saveEditor);
+    d.addEventListener("luxurycrop:range",renderOrders);
+    $("editorFields").addEventListener("change",function(e){if(e.target.id!=="productImage"||!e.target.files[0])return;var p=$("editorFields").querySelector(".product-preview");if(p){var url=URL.createObjectURL(e.target.files[0]);if(p.tagName!=="IMG"){var img=d.createElement("img");img.className="product-preview";img.alt="معاينة الصورة الجديدة";p.replaceWith(img);p=img;}p.src=url;}});
     d.addEventListener("click",function(e){var x=e.target.closest("[data-order-status]");if(x){changeStatus(x);return;}x=e.target.closest("[data-edit-product]");if(x){openProduct(x.dataset.editProduct);return;}x=e.target.closest("[data-edit-offer]");if(x){openOffer(x.dataset.editOffer);return;}if(e.target.closest(".nv[data-p]")){renderOrders();}});
   }
   d.addEventListener("DOMContentLoaded",function(){wire();authenticate().catch(function(){gate("تعذّر بدء لوحة الإدارة. حدّث الصفحة وحاول مرة ثانية.",false);});});

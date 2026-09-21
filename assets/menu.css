@@ -343,8 +343,9 @@ section.seen .orn{transform:scaleX(1)}
   font-size:19px;font-variant-numeric:tabular-nums;line-height:1}
 .price.sm{font-size:15px}
 .price s{font-size:12px;color:var(--mut);font-weight:500;margin-inline-end:3px}
-.sar{width:14px;height:14px;color:var(--red);opacity:1;fill:none;flex:0 0 auto}
-.sar path{fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round}
+.sar{display:inline-block;width:14px;height:16px;background:currentColor;color:var(--red);flex:0 0 auto;
+  -webkit-mask:url("img/saudi-riyal-symbol.svg") center/contain no-repeat;mask:url("img/saudi-riyal-symbol.svg") center/contain no-repeat}
+.product-image{width:100%;height:100%;object-fit:cover}
 .from{font-size:10.5px;color:var(--mut);font-weight:500}
 .add{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;
   background:linear-gradient(135deg,var(--red),var(--red-dark));color:#fff;

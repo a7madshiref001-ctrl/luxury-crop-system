@@ -68,12 +68,19 @@
     stamp: ic('<path d="M6 20h12"/><path d="M8 17.4h8V15a4 4 0 0 0-1.4-3c-.8-.7-1-1.5-.6-2.5.5-1.3-.4-2.6-2-2.6s-2.5 1.3-2 2.6c.4 1 .2 1.8-.6 2.5A4 4 0 0 0 8 15z"/>'),
     empty: ic('<path d="M4.5 8.5h15l-1.4 11.2a2 2 0 0 1-2 1.8H7.9a2 2 0 0 1-2-1.8z"/><path d="M9 8.5V6.4a3 3 0 0 1 6 0v2.1"/>')
   };
-  var SAR = '<svg class="sar" viewBox="0 0 24 24" aria-label="ريال"><path d="M16.8 2.8v10c0 2.9-2.1 4.6-4.8 5l-7 1.2"/><path d="M11.4 5.6v8.6"/><path d="M4.2 10.2l15.6 2.7"/><path d="M4.2 14.6l15.6 2.7"/></svg>';
+  var SAR = '<span class="sar" role="img" aria-label="ريال سعودي"></span>';
   var price = function (v, cls) { return '<div class="price' + (cls ? " " + cls : "") + '"><span class="num">' + v + '</span>' + SAR + '</div>'; };
 
   /* ================= صور ================= */
+  function rawByKey(k) {
+    var found = null;
+    M.sections.some(function(s){return (s.cats||[]).some(function(c){return (c.items||[]).some(function(it){if(it.k===k){found=it;return true;}return false;});});});
+    return found;
+  }
   function photo(k, cls, alt, inner) {
     inner = inner || "";
+    var raw = rawByKey(k), remote = raw && raw._remoteImage;
+    if (remote) return '<div class="' + cls + '"><img class="product-image" loading="lazy" decoding="async" src="' + esc(remote) + '" alt="' + esc(alt || "") + '">' + inner + '</div>';
     var image = IMAGE_MAP[k];
     if (!image) return '<div class="' + cls + ' noimg">' + inner + '</div>';
     return '<div class="' + cls + '"><span class="atlas-frame" style="--atlas-x:' + image.x + ';--atlas-y:' + image.y + '">' +
