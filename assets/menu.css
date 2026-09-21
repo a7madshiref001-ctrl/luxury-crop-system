@@ -262,7 +262,7 @@ main{position:relative;z-index:2}
     border-color .3s}
 .rail-sec.seen .ccard{opacity:1;transform:none}
 .ccard:hover{border-color:rgba(166,124,80,.36)}
-.ccard .ph{position:relative;height:112px;overflow:hidden;background:var(--bg2)}
+.ccard .ph{position:relative;aspect-ratio:3/2;overflow:hidden;background:var(--bg2)}
 .ccard .ph>img{width:100%;height:100%;object-fit:cover;transition:transform .8s cubic-bezier(.2,.7,.2,1)}
 .ccard .atlas-frame{transition:transform .8s cubic-bezier(.2,.7,.2,1)}
 .ccard:hover .ph>img{transform:scale(1.06)}

@@ -19,17 +19,18 @@
   );
   var IMAGE_MAP = {};
   (function indexImages() {
-    var keys = [];
+    var items = [];
     M.sections.forEach(function (section) {
       (section.cats || []).forEach(function (cat) {
-        (cat.items || []).forEach(function (item) { keys.push(item.k); });
+        (cat.items || []).forEach(function (item) { items.push(item); });
       });
     });
-    keys.forEach(function (key, index) {
-      IMAGE_MAP[key] = {
-        src: "assets/img/atlases/products-" + String(Math.floor(index / 6) + 1).padStart(2, "0") + ".webp",
-        x: -(index % 3) * 100 + "%",
-        y: -Math.floor(index % 6 / 3) * 100 + "%"
+    items.forEach(function (item, index) {
+      var imageIndex = Number.isInteger(item._imageIndex) ? item._imageIndex : index;
+      IMAGE_MAP[item.k] = {
+        src: "assets/img/atlases/products-" + String(Math.floor(imageIndex / 6) + 1).padStart(2, "0") + ".webp",
+        x: -(imageIndex % 3) * 100 + "%",
+        y: -Math.floor(imageIndex % 6 / 3) * 100 + "%"
       };
     });
   })();
@@ -204,9 +205,12 @@
   function renderCombos() {
     $("#comboRail").innerHTML = (S.combos || []).map(function (c, i) {
       var k = keyOf((c.parts || [])[0]);
+      var media = c.img
+        ? '<div class="ph"><img loading="lazy" decoding="async" src="' + esc(c.img) + '" alt="' + esc(c.n) + '"></div>'
+        : photo(k, "ph", c.n);
       return '<article class="ccard" style="--i:' + i + '">' +
         '<span class="save">وفّر ' + (c.was - c.p) + ' ' + CUR + '</span>' +
-        photo(k, "ph", c.n) +
+        media +
         '<div class="bd"><b>' + esc(c.n) + '</b><p>' + esc(c.d) + '</p><div class="r">' +
         '<div><div class="price sm"><span class="num">' + c.p + '</span>' + SAR +
         '<span class="was">' + c.was + '</span></div></div>' +
@@ -527,6 +531,7 @@
     var saved = F.get(F.K.cart, []);
     cart = (Array.isArray(saved) ? saved : []).filter(function (l) {
       return l && typeof l.n === "string" && l.n.length <= 180 &&
+        (F.byName(l.n) || l.combo === 1 || l.addon === 1) &&
         Number.isFinite(Number(l.p)) && Number(l.p) >= 0 && Number(l.p) <= 10000 &&
         Number.isInteger(Number(l.q)) && Number(l.q) >= 1 && Number(l.q) <= 99;
     }).slice(0, 100).map(function (l) {

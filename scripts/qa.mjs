@@ -20,8 +20,8 @@ const items = menu.sections.flatMap(section =>
 const names = new Set(items.map(item => item.n));
 const keys = new Set(items.map(item => item.k));
 
-pass(menu.sections.length === 10, `عدد الأقسام المتوقع 10، الموجود ${menu.sections.length}`);
-pass(items.length === 64, `عدد الأصناف المتوقع 64، الموجود ${items.length}`);
+pass(menu.sections.length === 8, `عدد الأقسام المعتمدة المتوقع 8، الموجود ${menu.sections.length}`);
+pass(items.length === 32, `عدد الأصناف المعتمدة المتوقع 32، الموجود ${items.length}`);
 pass(names.size === items.length, "يوجد اسم صنف مكرر");
 pass(keys.size === items.length, "يوجد مفتاح صورة مكرر");
 
@@ -41,13 +41,18 @@ referenced.forEach(name => pass(names.has(name), `مرجع لصنف غير مو�
 (sales.combos || []).forEach(combo => {
   pass(Number.isFinite(combo.p) && combo.p >= 0, `سعر كومبو غير صالح: ${combo.n}`);
   pass(Number.isFinite(combo.was) && combo.was >= combo.p, `السعر السابق للكومبو غير منطقي: ${combo.n}`);
+  pass(typeof combo.img === "string" && combo.img.length > 0, `صورة الكومبو غير محددة: ${combo.n}`);
+  const comboImage = combo.img && path.join(root, combo.img);
+  pass(comboImage && fs.existsSync(comboImage) && fs.statSync(comboImage).size > 0,
+    `صورة الكومبو ناقصة: ${combo.n}`);
 });
 
 pass(Array.isArray(sales.order.modes) && sales.order.modes.length === 1 && sales.order.modes[0] === "الطاولة",
   "الموقع يجب أن يقبل الطلب من الطاولة فقط");
 pass(Number.isInteger(sales.order.tables) && sales.order.tables > 0, "عدد الطاولات غير صالح");
 
-for (let i = 1; i <= Math.ceil(items.length / 6); i += 1) {
+const atlasNumbers = new Set(items.map(item => Math.floor(item._imageIndex / 6) + 1));
+for (const i of atlasNumbers) {
   const file = path.join(root, "assets/img/atlases", `products-${String(i).padStart(2, "0")}.webp`);
   pass(fs.existsSync(file) && fs.statSync(file).size > 0, `ملف صور ناقص: ${path.basename(file)}`);
 }
@@ -70,7 +75,7 @@ if (!/^9665\d{8}$/.test(String(sales.order.whatsapp)) || sales.order.whatsapp ==
 }
 warnings.push("لوحة الإدارة محلية على المتصفح ولا تمثل تسجيل دخول أو قاعدة بيانات مشتركة بين الأجهزة.");
 
-console.log(`PASS: ${items.length} صنفًا، ${menu.sections.length} أقسام، ${Math.ceil(items.length / 6)} ملفات صور.`);
+console.log(`PASS: ${items.length} صنفًا، ${menu.sections.length} أقسام، ${atlasNumbers.size} ملفات أطلس و${(sales.combos || []).length} صور عروض.`);
 warnings.forEach(message => console.warn(`WARN: ${message}`));
 if (failures.length) {
   failures.forEach(message => console.error(`FAIL: ${message}`));

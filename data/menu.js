@@ -545,3 +545,56 @@ window.MENU = {
     }
   ]
 };
+
+/* الأصناف المعتمدة من صور العميل فقط. نحتفظ بترتيب الصورة الأصلي
+   حتى تظل إحداثيات أطلس الصور صحيحة بعد حذف الأصناف غير المعتمدة. */
+(function pruneToApprovedPhotos() {
+  var approved = {
+    "سادو اثيوبيا حار": 1,
+    "بينسا اثيوبيا حار": 1,
+    "بيرياس بيرو حار": 1,
+    "لاهرموسا كولومبيا حار": 1,
+    "وهاج اثيوبيا حار": 1,
+    "كولد برو": 1,
+    "كوكيز فانيليا": 1,
+    "كوكيز شوكلت": 1,
+    "ماتيلدا كيك شوكلاته": 1,
+    "كوكنت مانجو": 1,
+    "تشيز كيك مانجو": 1,
+    "تراميسو": 1,
+    "سينابون كلاسيك": 1,
+    "تشيز توت أزرق": 1,
+    "تشيز توت أحمر": 1,
+    "إسبريسو": 1,
+    "أمريكانو حار": 1,
+    "لاتيه حار": 1,
+    "سبانش لاتيه حار": 1,
+    "قهوة سعودية": 1,
+    "آيس أمريكانو": 1,
+    "لاتيه بارد": 1,
+    "سبانش لاتيه بارد": 1,
+    "آيس لاتيه كراميل": 1,
+    "آيس شوكلت": 1,
+    "حليب روز": 1,
+    "ماتشا كلاسيك": 1,
+    "ماتشا لافندر": 1,
+    "ماتشا توت": 1,
+    "ماتشا فانيليا": 1,
+    "ماتشا كوكنت": 1,
+    "كركديه كلاسيك": 1
+  };
+  var imageIndex = 0;
+  window.MENU.sections.forEach(function (section) {
+    (section.cats || []).forEach(function (cat) {
+      (cat.items || []).forEach(function (item) { item._imageIndex = imageIndex++; });
+      cat.items = (cat.items || []).filter(function (item) { return approved[item.n]; });
+    });
+    section.cats = (section.cats || []).filter(function (cat) { return cat.items.length; });
+    if (section.id === "cold-v60") {
+      section.title = "كولد برو";
+      section.desc = "قهوة مقطّرة على البارد بتركيز عالي";
+      section.cats.forEach(function (cat) { cat.title = "كولد برو"; });
+    }
+  });
+  window.MENU.sections = window.MENU.sections.filter(function (section) { return section.cats.length; });
+})();

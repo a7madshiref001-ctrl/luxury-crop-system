@@ -13,7 +13,7 @@
     cus: "areeb.customers.v1",
     loy: "areeb.loyalty.v1",
     ctl: "areeb.control.v1",
-    seed: "areeb.seeded.v3",
+    seed: "areeb.seeded.v4.approved-menu",
     cart: "areeb.cart.v1",
     cid: "areeb.cid.v1",
     theme: "areeb.theme.v1",
@@ -118,6 +118,11 @@
 
   function seedDemo(days) {
     days = days || 62;
+    /* احتفظ بأي بيانات حقيقية عند تحديث بيانات العرض التجريبية. */
+    var realEvents = get(K.ev, []).filter(function (x) { return !x.demo; });
+    var realOrders = get(K.ord, []).filter(function (x) { return !x.demo; });
+    var realReviews = get(K.rev, []).filter(function (x) { return !x.demo; });
+    var realCustomers = get(K.cus, []).filter(function (x) { return !x.demo; });
     var pool = ITEMS.map(function (r) { return { r: r, w: weightOf(r) }; });
     var totalW = pool.reduce(function (a, b) { return a + b.w; }, 0);
     var rnd = rngFrom(20260722);
@@ -231,6 +236,10 @@
     [K.ev, K.ord, K.rev, K.cus].forEach(function (k) {
       try { localStorage.removeItem(k); } catch (e) { }
     });
+    orders = realOrders.concat(orders);
+    reviews = realReviews.concat(reviews);
+    customers = realCustomers.concat(customers);
+    evs = realEvents.concat(evs).sort(function (a, b) { return a.t - b.t; });
     set(K.ord, orders); set(K.rev, reviews); set(K.cus, customers);
     for (var tries = 0; tries < 5; tries++) {
       if (set(K.ev, evs)) break;
