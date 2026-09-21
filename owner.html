@@ -70,6 +70,7 @@
       <button class="btn btn-g btn-s" style="flex:1" data-own-action="theme">🌙 الوضع</button>
       <button class="btn btn-g btn-s" style="flex:1" data-own-action="print">🖨️ طباعة</button>
     </div>
+    <button class="btn btn-g btn-s" id="adminPasswordChange" style="width:100%;margin-top:8px">🔐 تعيين كلمة المرور</button>
     <button class="btn btn-g btn-s" id="adminLogout" style="width:100%;margin-top:8px">تسجيل الخروج</button>
   </div>
 </aside>
@@ -381,6 +382,17 @@
   </form>
 </dialog>
 
+<dialog id="passwordDialog" class="editor-dialog">
+  <form id="passwordForm">
+    <div class="dialog-head"><h2>تعيين كلمة مرور الإدارة</h2><button type="button" id="passwordClose" aria-label="إغلاق">×</button></div>
+    <p class="sub">استخدم 10 أحرف على الأقل. كلمة المرور تُرسل مباشرة إلى Supabase ولا تُحفظ داخل الموقع.</p>
+    <label class="edit-field">كلمة المرور الجديدة<input id="newAdminPassword" type="password" autocomplete="new-password" minlength="10" required></label>
+    <label class="edit-field">تأكيد كلمة المرور<input id="confirmAdminPassword" type="password" autocomplete="new-password" minlength="10" required></label>
+    <div id="passwordError" class="login-error" role="alert" aria-live="polite"></div>
+    <div class="dialog-actions"><button class="btn btn-g" type="button" id="passwordCancel">إلغاء</button><button class="btn btn-p" type="submit" id="passwordSave">حفظ كلمة المرور</button></div>
+  </form>
+</dialog>
+
 <script defer src="data/menu.js?v=20260921-approved-menu"></script>
 <script defer src="data/sales.js?v=20260921-combo-images"></script>
 <script defer src="data/backend-config.js?v=20260921-orders"></script>
@@ -388,6 +400,6 @@
 <script defer src="assets/backend.js?v=20260921-invite"></script>
 <script defer src="assets/sys.js?v=20260921-approved-menu"></script>
 <script defer src="assets/owner.js?v=20260921-orders"></script>
-<script defer src="assets/owner-live.js?v=20260921-invite-fix"></script>
+<script defer src="assets/owner-live.js?v=20260921-password"></script>
 </body>
 </html>

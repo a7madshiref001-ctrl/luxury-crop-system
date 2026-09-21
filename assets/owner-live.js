@@ -216,10 +216,34 @@
     try{await B.saveSettings({tables_count:Number($("liveTables").value),ordering_open:$("liveOrdering").checked});alert("تم حفظ إعدادات الطلبات ✅");}
     catch(err){alert("تعذّر حفظ الإعدادات");}finally{button.disabled=false;}
   }
+  function openPasswordDialog() {
+    $("passwordForm").reset();
+    $("passwordError").textContent = "";
+    $("passwordDialog").showModal();
+  }
+  async function savePassword(e) {
+    e.preventDefault();
+    var password = $("newAdminPassword").value;
+    var save = $("passwordSave");
+    $("passwordError").textContent = "";
+    if (password.length < 10) { $("passwordError").textContent = "استخدم 10 أحرف على الأقل."; return; }
+    if (password !== $("confirmAdminPassword").value) { $("passwordError").textContent = "كلمتا المرور غير متطابقتين."; return; }
+    save.disabled = true; save.textContent = "جاري الحفظ…";
+    try {
+      await B.updatePassword(password);
+      $("passwordDialog").close();
+      alert("تم تعيين كلمة المرور بنجاح ✅");
+    } catch (err) { $("passwordError").textContent = errorText(err); }
+    finally { save.disabled = false; save.textContent = "حفظ كلمة المرور"; }
+  }
   function wire() {
     $("adminLogin").addEventListener("submit",login);
     $("invitePasswordBtn").addEventListener("click",finishInvite);
     $("adminLogout").addEventListener("click",async function(){await B.signOut();location.reload();});
+    $("adminPasswordChange").addEventListener("click",openPasswordDialog);
+    $("passwordClose").addEventListener("click",function(){$("passwordDialog").close();});
+    $("passwordCancel").addEventListener("click",function(){$("passwordDialog").close();});
+    $("passwordForm").addEventListener("submit",savePassword);
     $("liveProductSearch").addEventListener("input",function(){renderProducts(this.value);});
     $("saveStoreSettings").addEventListener("click",saveSettings);
     $("editorForm").addEventListener("submit",saveEditor);
