@@ -3,6 +3,7 @@
 
   var cfg = w.BACKEND_CONFIG || {};
   var client = null;
+  var orderClient = null;
   var channel = null;
 
   function configured() {
@@ -20,6 +21,18 @@
       });
     }
     return client;
+  }
+
+  function orderApi() {
+    if (!configured()) return null;
+    if (!w.supabase || !w.supabase.createClient) throw new Error("تعذّر تحميل عميل قاعدة البيانات");
+    if (!orderClient) {
+      orderClient = w.supabase.createClient(cfg.url, cfg.publishableKey, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+        global: { headers: { "X-Client-Info": "luxury-crop-orders/1.0" } }
+      });
+    }
+    return orderClient;
   }
 
   function cleanText(value, max) {
@@ -80,7 +93,7 @@
   }
 
   async function placeOrder(payload) {
-    var c = init();
+    var c = orderApi();
     if (!c) throw new Error("نظام الطلبات قيد التجهيز");
     var safe = {
       table_no: Number(payload.table_no),

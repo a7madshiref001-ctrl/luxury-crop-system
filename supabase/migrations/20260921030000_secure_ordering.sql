@@ -244,7 +244,7 @@ end;
 $$;
 
 revoke all on function public.place_order(jsonb) from public, authenticated;
-grant execute on function public.place_order(jsonb) to anon, authenticated;
+grant execute on function public.place_order(jsonb) to anon;
 
 do $$ begin
   alter publication supabase_realtime add table public.orders;
