@@ -11,7 +11,7 @@
 <link rel="icon" href="assets/logo.png">
 <link rel="stylesheet" href="assets/fonts.css?v=20260920-qa">
 <link rel="stylesheet" href="assets/core.css?v=20260920-qa">
-<link rel="stylesheet" href="assets/owner.css?v=20260921-order-alerts">
+<link rel="stylesheet" href="assets/owner.css?v=20260922-smart-qr">
 </head>
 <body class="auth-pending">
 
@@ -60,6 +60,7 @@
     <div class="ttl">التحكّم</div>
     <button class="nv" data-p="control"><span class="e">🎛️</span> تحكّم فوري</button>
     <button class="nv" data-p="catalog"><span class="e">☕</span> المنتجات والعروض</button>
+    <button class="nv" data-p="service"><span class="e">📍</span> نقاط الخدمة والـQR</button>
     <button class="nv" data-p="links"><span class="e">🔗</span> الروابط والإعدادات</button>
   </div>
 
@@ -322,6 +323,27 @@
     </div>
   </div>
 
+  <!-- ---------- نقاط الخدمة والـ QR ---------- -->
+  <div class="pane" id="p-service">
+    <div class="card smart-service-card" style="margin-bottom:16px">
+      <div class="catalog-head">
+        <div><h2>📍 نقاط الخدمة والـQR</h2><div class="sub">أنشئ كودًا عامًا للكافيه أو الفندق، أو كودًا خاصًا لكل طاولة وغرفة. المنيو يتعرّف على المكان تلقائيًا.</div></div>
+        <button class="btn btn-p btn-s" id="addServicePoint" type="button">+ إضافة نقطة</button>
+      </div>
+      <div class="note service-note">للكود العام: اختر المكان واكتب «الكافيه» أو «الفندق» واترك الرقم/المرجع فارغًا. للكود المخصص: اكتب «طاولة 4» أو «غرفة 203» وأضف الرقم.</div>
+      <div class="service-summary">
+        <div><b id="hallPointCount">0</b><span>طاولات الصالة</span></div>
+        <div><b id="hotelPointCount">0</b><span>نقاط الفندق</span></div>
+        <label class="smart-toggle"><input id="smartLocationsRequired" type="checkbox"><span><b>إلزام الدخول من QR</b><small>فعّله بعد طباعة الأكواد؛ عندها لن يكتب العميل رقم الطاولة يدويًا.</small></span></label>
+        <button class="btn btn-g btn-s" id="saveSmartLocations" type="button">حفظ وضع الـQR</button>
+      </div>
+    </div>
+    <div class="grid g2 service-columns">
+      <div class="card"><h3>🪑 طاولات الصالة</h3><div class="sub">كود مستقل لكل طاولة ويظهر رقمها تلقائيًا في الطلب.</div><div id="hallPointList" class="editor-list"></div></div>
+      <div class="card"><h3>🏨 الفندق</h3><div class="sub">أضف غرفة أو استقبال أو أي نقطة تسليم داخل الفندق.</div><div id="hotelPointList" class="editor-list"></div></div>
+    </div>
+  </div>
+
   <!-- ---------- الروابط ---------- -->
   <div class="pane" id="p-links">
     <div class="grid g2" style="margin-bottom:16px">
@@ -331,10 +353,10 @@
         <div class="rows" id="links"></div>
       </div>
       <div class="card">
-        <h3>📱 كود الـ QR</h3>
-        <div class="sub">اطبعه وحطه على الطاولات — العميل يصوّره ويفتح المنيو</div>
+        <h3>📱 QR عام للمنيو</h3>
+        <div class="sub">للتصفح فقط من غير تحديد طاولة أو فندق.</div>
         <div id="qr" style="display:grid;place-items:center;padding:14px"></div>
-        <div class="note">الكود ده بيولّد من لينك المنيو الحالي.</div>
+        <div class="note">لطلبات الطاولات والفندق استخدم الأكواد الآمنة من قسم «نقاط الخدمة والـQR».</div>
       </div>
     </div>
     <div class="card">
@@ -387,9 +409,9 @@
 <script defer src="data/sales.js?v=20260921-combo-images"></script>
 <script defer src="data/backend-config.js?v=20260921-orders"></script>
 <script defer src="assets/vendor/supabase-2.116.0.js?v=2.116.0"></script>
-<script defer src="assets/backend.js?v=20260922-catalog-settings"></script>
+<script defer src="assets/backend.js?v=20260922-smart-qr"></script>
 <script defer src="assets/sys.js?v=20260921-approved-menu"></script>
-<script defer src="assets/owner.js?v=20260921-analysis-pin"></script>
-<script defer src="assets/owner-live.js?v=20260922-catalog-settings"></script>
+<script defer src="assets/owner.js?v=20260922-smart-qr"></script>
+<script defer src="assets/owner-live.js?v=20260922-smart-qr"></script>
 </body>
 </html>

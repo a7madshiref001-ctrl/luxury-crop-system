@@ -12,6 +12,7 @@
   var esc = function (s) { return F.esc(s); };
 
   var cart = [], sel = null, offer = null, mode = null, fee = 0, stars = 0, lastFocus = null;
+  var locationToken = new URLSearchParams(w.location.search).get("loc") || "", servicePoint = null, locationInvalid = false;
   var LOW_POWER = !!(
     matchMedia("(prefers-reduced-motion: reduce)").matches ||
     (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
@@ -104,6 +105,7 @@
     renderOffer();
     renderFooter();
     restoreCart();
+    if (servicePoint && $("#heroOrderText")) $("#heroOrderText").textContent = "اطلب إلى " + servicePoint.label;
 
     F.track("visit", { ref: d.referrer || "" });
     splash(); beans(); scrollFx(); wire();
@@ -120,8 +122,13 @@
       try {
         var catalog = await w.Backend.loadCatalog();
         w.Backend.applyCatalog(M, S, catalog);
+        if (locationToken) {
+          servicePoint = await w.Backend.resolveServicePoint(locationToken);
+          locationInvalid = !servicePoint;
+        }
       } catch (err) {
         console.error("Catalog load failed", err);
+        if (locationToken) locationInvalid = true;
       }
     }
     init();
@@ -624,15 +631,20 @@
     }
 
     var ICM = [IC.table, IC.bag, IC.car];
-    if (S.order.modes.length > 1) {
-      h += '<div class="sh-sec"><div class="lb">' + IC.pin + 'الطلب وين؟</div><div class="seg" id="modes">' +
-        S.order.modes.map(function (m, i) {
-          return '<button data-mode="' + esc(m) + '" class="' + (i === 0 ? "on" : "") + '">' + (ICM[i] || "") + esc(m) + '</button>';
-        }).join("") + '</div></div>';
+    if (servicePoint) {
+      h += '<div class="sh-sec location-confirm"><div class="lb">' + IC.pin + 'مكان استلام الطلب</div><div class="location-value"><b>' + esc(servicePoint.label) + '</b><span>' + (servicePoint.kind === "hotel" ? "طلب الفندق" : "طلب الصالة") + ' · تم التعرّف تلقائيًا من الـQR</span></div></div>';
+    } else if (locationInvalid || S.order.smartLocationsRequired) {
+      h += '<div class="sh-sec location-error"><div class="lb">' + IC.pin + 'تعذّر تحديد مكانك</div><p>امسح كود الـQR الموجود على طاولتك أو في غرفتك، وبعدها افتح الطلب مرة ثانية.</p></div>';
+    } else {
+      if (S.order.modes.length > 1) {
+        h += '<div class="sh-sec"><div class="lb">' + IC.pin + 'الطلب وين؟</div><div class="seg" id="modes">' +
+          S.order.modes.map(function (m, i) {
+            return '<button data-mode="' + esc(m) + '" class="' + (i === 0 ? "on" : "") + '">' + (ICM[i] || "") + esc(m) + '</button>';
+          }).join("") + '</div></div>';
+      }
+      h += '<div class="sh-sec" id="tblWrap"><div class="lb">' + IC.table + 'رقم الطاولة</div>' +
+        '<input class="fld" id="tbl" type="number" inputmode="numeric" min="1" max="' + S.order.tables + '" required placeholder="من 1 إلى ' + S.order.tables + '"></div>';
     }
-
-    h += '<div class="sh-sec" id="tblWrap"><div class="lb">' + IC.table + 'رقم الطاولة</div>' +
-      '<input class="fld" id="tbl" type="number" inputmode="numeric" min="1" max="' + S.order.tables + '" required placeholder="من 1 إلى ' + S.order.tables + '"></div>';
 
     h += '<div class="sh-sec"><div class="lb">' + IC.phone + 'اسمك ورقمك</div>' +
       '<input class="fld" id="cn" autocomplete="name" maxlength="60" placeholder="الاسم (اختياري)" style="margin-bottom:8px">' +
@@ -652,7 +664,7 @@
       '<div class="tot hide" id="feeRow"><span>توصيل</span><b>' + S.order.deliveryFee + SAR + '</b></div>' +
       '<div class="tot big"><span>الإجمالي</span><b id="grand">' + F.money(t) + SAR + '</b></div></div>';
 
-    var ready = !!(w.Backend && w.Backend.configured() && S.order.open !== false);
+    var ready = !!(w.Backend && w.Backend.configured() && S.order.open !== false && !locationInvalid && (!S.order.smartLocationsRequired || servicePoint));
     h += '<div class="cta-wrap"><button class="btn-main" data-act="send"' + (ready ? "" : " disabled") + '>' + IC.check +
       (ready ? 'تأكيد وإرسال الطلب' : 'نظام الطلبات قيد التجهيز') + '</button>' +
       '<div class="note-l" style="text-align:center">' + (ready
@@ -723,6 +735,7 @@
     if (msg.indexOf("ordering_closed") > -1) return "استقبال الطلبات متوقف مؤقتًا";
     if (msg.indexOf("item_unavailable") > -1) return "أحد الأصناف لم يعد متاحًا — حدّث الصفحة وجرب";
     if (msg.indexOf("invalid_table") > -1) return "رقم الطاولة غير صحيح";
+    if (msg.indexOf("location_required") > -1 || msg.indexOf("invalid_location") > -1) return "امسح QR الطاولة أو الغرفة من جديد";
     return navigator.onLine ? "تعذّر إرسال الطلب — جرّب مرة ثانية" : "لا يوجد اتصال بالإنترنت";
   }
   async function send(button) {
@@ -732,7 +745,8 @@
     var nm = $("#cn") ? $("#cn").value.trim() : "";
     var ph = $("#cp") ? $("#cp").value.trim() : "";
     if (!w.Backend || !w.Backend.configured()) { toast("نظام الطلبات قيد التجهيز"); return; }
-    if (m === "الطاولة") {
+    if (!servicePoint && (locationInvalid || S.order.smartLocationsRequired)) { toast("امسح QR الطاولة أو الغرفة أولًا"); return; }
+    if (!servicePoint && m === "الطاولة") {
       var tableNo = Number(tbl);
       if (!Number.isInteger(tableNo) || tableNo < 1 || tableNo > S.order.tables) {
         toast("اكتب رقم طاولة صحيح من 1 إلى " + S.order.tables); $("#tbl").focus(); return;
@@ -749,11 +763,11 @@
     if (button) { button.disabled = true; button.setAttribute("aria-busy", "true"); button.textContent = "جاري إرسال الطلب…"; }
     try {
       var result = await w.Backend.placeOrder({
-        table_no: Number(tbl), customer_name: nm, customer_phone: ph,
+        table_no: servicePoint ? null : Number(tbl), location_token: servicePoint ? locationToken : "", customer_name: nm, customer_phone: ph,
         idempotency_key: requestId("o_"), client_id: clientId(),
         lines: cart.map(function (l) { return { kind: l.kind, id: l.id, qty: l.q, size_index: l.size_index, note: l.note || "" }; })
       });
-      F.pushOrder({ id: String(result.order_number), t: Date.now(), lines: cart.slice(), total: Number(result.total || total), up: up, addon: ad, mode: m, table: +tbl, name: nm, phone: ph });
+      F.pushOrder({ id: String(result.order_number), t: Date.now(), lines: cart.slice(), total: Number(result.total || total), up: up, addon: ad, mode: servicePoint ? servicePoint.kind : m, table: servicePoint ? servicePoint.label : +tbl, name: nm, phone: ph });
       if (ph) F.pushCustomer({ t: Date.now(), phone: ph, name: nm || "—", spent: Number(result.total || total) });
       if (S.loyalty.on) { var L = F.get(F.K.loy, { n: 0 }); L.n = (L.n + 1) % (S.loyalty.goal + 1); F.set(F.K.loy, L); }
       cart = []; saveCart(); syncBar(); closeSheet("shCart");

@@ -47,7 +47,7 @@
       c.from("products").select("id,name,description,section_id,image_url,price,size_prices,is_active,sold_out,sort_order").order("sort_order"),
       c.from("offers").select("id,name,description,image_url,price,original_price,parts,is_active,sort_order").order("sort_order"),
       c.from("addons").select("id,section_id,name,price,is_active,sort_order").order("sort_order"),
-      c.from("store_settings").select("tables_count,ordering_open").eq("id", 1).maybeSingle()
+      c.from("store_settings").select("tables_count,ordering_open,smart_locations_required").eq("id", 1).maybeSingle()
     ]);
     res.forEach(function (r) { if (r.error) throw r.error; });
     return { sections:res[0].data||[], products: res[1].data || [], offers: res[2].data || [], addons: res[3].data || [], settings: res[4].data || null };
@@ -110,14 +110,24 @@
     if (data.settings) {
       sales.order.tables = Number(data.settings.tables_count) || sales.order.tables;
       sales.order.open = data.settings.ordering_open !== false;
+      sales.order.smartLocationsRequired = !!data.settings.smart_locations_required;
     }
+  }
+
+  async function resolveServicePoint(token) {
+    token = cleanText(token, 80);
+    if (!token) return null;
+    var out = await orderApi().rpc("resolve_service_point", { p_token: token });
+    if (out.error) throw out.error;
+    return out.data || null;
   }
 
   async function placeOrder(payload) {
     var c = orderApi();
     if (!c) throw new Error("نظام الطلبات قيد التجهيز");
     var safe = {
-      table_no: Number(payload.table_no),
+      table_no: payload.table_no == null || payload.table_no === "" ? null : Number(payload.table_no),
+      location_token: cleanText(payload.location_token, 80),
       customer_name: cleanText(payload.customer_name, 60),
       customer_phone: cleanText(payload.customer_phone, 20),
       idempotency_key: cleanText(payload.idempotency_key, 80),
@@ -166,7 +176,7 @@
 
   async function listOrders(limit) {
     var c = init();
-    var out = await c.from("orders").select("id,order_number,table_no,customer_name,customer_phone,status,subtotal,total,created_at,updated_at,order_items(id,item_type,item_id,item_name,quantity,unit_price,line_total,note)")
+    var out = await c.from("orders").select("id,order_number,table_no,service_point_id,service_type,service_label,customer_name,customer_phone,status,subtotal,total,created_at,updated_at,order_items(id,item_type,item_id,item_name,quantity,unit_price,line_total,note)")
       .order("created_at", { ascending: false }).limit(Math.min(Number(limit) || 150, 500));
     if (out.error) throw out.error;
     return out.data || [];
@@ -220,10 +230,11 @@
       c.from("menu_sections").select("*").order("sort_order"),
       c.from("products").select("*").order("sort_order"),
       c.from("offers").select("*").order("sort_order"),
+      c.from("service_points").select("*").order("sort_order"),
       c.from("store_settings").select("*").eq("id", 1).single()
     ]);
     res.forEach(function (r) { if (r.error) throw r.error; });
-    return { sections:res[0].data||[], products: res[1].data || [], offers: res[2].data || [], settings: res[3].data };
+    return { sections:res[0].data||[], products: res[1].data || [], offers: res[2].data || [], servicePoints:res[3].data||[], settings: res[4].data };
   }
 
   async function saveSection(section) {
@@ -234,10 +245,24 @@
   }
 
   async function saveSettings(settings) {
-    var data = { tables_count: Number(settings.tables_count), ordering_open: !!settings.ordering_open, updated_at: new Date().toISOString() };
+    var data = { tables_count: Number(settings.tables_count), ordering_open: !!settings.ordering_open,
+      smart_locations_required: !!settings.smart_locations_required, updated_at: new Date().toISOString() };
     var out = await init().from("store_settings").update(data).eq("id", 1).select().single();
     if (out.error) throw out.error;
     return out.data;
+  }
+
+  async function saveServicePoint(point) {
+    var data={kind:cleanText(point.kind,12),label:cleanText(point.label,80),reference_no:cleanText(point.reference_no,40),
+      is_active:point.is_active!==false,sort_order:Number(point.sort_order)||0,updated_at:new Date().toISOString()};
+    if(point.id)data.id=point.id;
+    var out=await init().from("service_points").upsert(data).select().single();
+    if(out.error)throw out.error; return out.data;
+  }
+  async function regenerateServicePoint(id) {
+    var token=w.crypto&&w.crypto.randomUUID?w.crypto.randomUUID():"00000000-0000-4000-8000-"+Date.now().toString().padStart(12,"0").slice(-12);
+    var out=await init().from("service_points").update({token:token,updated_at:new Date().toISOString()}).eq("id",id).select().single();
+    if(out.error)throw out.error; return out.data;
   }
 
   async function uploadProductImage(productId, file) {
@@ -263,8 +288,8 @@
   }
 
   w.Backend = { configured: configured, init: init, loadCatalog: loadCatalog, applyCatalog: applyCatalog,
-    placeOrder: placeOrder, signIn: signIn, signOut: signOut, session: session, updatePassword: updatePassword,
+    placeOrder: placeOrder, resolveServicePoint:resolveServicePoint, signIn: signIn, signOut: signOut, session: session, updatePassword: updatePassword,
     listOrders: listOrders, updateOrderStatus: updateOrderStatus, subscribeOrders: subscribeOrders,
     saveProduct: saveProduct, saveOffer: saveOffer, adminCatalog: adminCatalog, saveSettings: saveSettings,
-    saveSection:saveSection, uploadProductImage: uploadProductImage, uploadOfferImage:uploadOfferImage, clearAllOrders: clearAllOrders };
+    saveSection:saveSection, saveServicePoint:saveServicePoint, regenerateServicePoint:regenerateServicePoint, uploadProductImage: uploadProductImage, uploadOfferImage:uploadOfferImage, clearAllOrders: clearAllOrders };
 })(window);
