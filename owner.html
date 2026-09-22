@@ -350,9 +350,9 @@
 
 <dialog id="editorDialog" class="editor-dialog">
   <form method="dialog" id="editorForm">
-    <div class="dialog-head"><h2 id="editorTitle">تعديل</h2><button value="cancel" aria-label="إغلاق">×</button></div>
+    <div class="dialog-head"><h2 id="editorTitle">تعديل</h2><button type="button" data-editor-cancel aria-label="إغلاق">×</button></div>
     <div id="editorFields"></div>
-    <div class="dialog-actions"><button class="btn btn-g" value="cancel">إلغاء</button><button class="btn btn-p" id="editorSave" value="default">حفظ التعديل</button></div>
+    <div class="dialog-actions"><button class="btn btn-g" type="button" data-editor-cancel>إلغاء</button><button class="btn btn-p" id="editorSave" type="submit">حفظ التعديل</button></div>
   </form>
 </dialog>
 
@@ -386,6 +386,6 @@
 <script defer src="assets/backend.js?v=20260921-products"></script>
 <script defer src="assets/sys.js?v=20260921-approved-menu"></script>
 <script defer src="assets/owner.js?v=20260921-analysis-pin"></script>
-<script defer src="assets/owner-live.js?v=20260921-products-images"></script>
+<script defer src="assets/owner-live.js?v=20260922-cancel-fix"></script>
 </body>
 </html>
