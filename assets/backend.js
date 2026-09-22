@@ -43,17 +43,27 @@
     var c = init();
     if (!c) return null;
     var res = await Promise.all([
+      c.from("menu_sections").select("id,title,description,icon,is_active,sort_order").order("sort_order"),
       c.from("products").select("id,name,description,section_id,image_url,price,size_prices,is_active,sold_out,sort_order").order("sort_order"),
       c.from("offers").select("id,name,description,image_url,price,original_price,parts,is_active,sort_order").order("sort_order"),
       c.from("addons").select("id,section_id,name,price,is_active,sort_order").order("sort_order"),
       c.from("store_settings").select("tables_count,ordering_open").eq("id", 1).maybeSingle()
     ]);
     res.forEach(function (r) { if (r.error) throw r.error; });
-    return { products: res[0].data || [], offers: res[1].data || [], addons: res[2].data || [], settings: res[3].data || null };
+    return { sections:res[0].data||[], products: res[1].data || [], offers: res[2].data || [], addons: res[3].data || [], settings: res[4].data || null };
   }
 
   function applyCatalog(menu, sales, data) {
     if (!data) return;
+    if (data.sections && data.sections.length) {
+      var existingSections={}; (menu.sections||[]).forEach(function(s){existingSections[s.id]=s;});
+      menu.sections=(data.sections||[]).filter(function(s){return s.is_active!==false;}).map(function(s){
+        var current=existingSections[s.id]||{id:s.id,cats:[{id:s.id+"-a",title:s.title,items:[]}]};
+        current.title=cleanText(s.title,80); current.desc=cleanText(s.description,240); current.icon=cleanText(s.icon,20)||"hot";
+        if(!current.cats||!current.cats.length)current.cats=[{id:s.id+"-a",title:s.title,items:[]}];
+        current.cats[0].title=current.title; return current;
+      });
+    }
     var byId = {}, seen = {};
     (data.products || []).forEach(function (p) { byId[p.id] = p; });
     (menu.sections || []).forEach(function (section) {
@@ -72,7 +82,6 @@
           return p.is_active !== false;
         });
       });
-      section.cats = (section.cats || []).filter(function (cat) { return cat.items.length; });
     });
     (data.products || []).filter(function (p) { return p.is_active !== false && !seen[p.id]; }).forEach(function (p) {
       var section = (menu.sections || []).find(function (x) { return x.id === p.section_id; });
@@ -80,6 +89,9 @@
       section.cats[0].items.push({ k:p.id, n:cleanText(p.name,120), d:cleanText(p.description,500), p:Number(p.price),
         s:Array.isArray(p.size_prices)&&p.size_prices.length?p.size_prices.map(Number):undefined,
         _dbId:p.id, _remoteImage:cleanText(p.image_url,500), _remoteSoldOut:!!p.sold_out });
+    });
+    (menu.sections || []).forEach(function (section) {
+      section.cats = (section.cats || []).filter(function (cat) { return cat.items.length; });
     });
     menu.sections = (menu.sections || []).filter(function (section) { return section.cats.length; });
     if (data.offers && data.offers.length) {
@@ -205,12 +217,20 @@
   async function adminCatalog() {
     var c = init();
     var res = await Promise.all([
+      c.from("menu_sections").select("*").order("sort_order"),
       c.from("products").select("*").order("sort_order"),
       c.from("offers").select("*").order("sort_order"),
       c.from("store_settings").select("*").eq("id", 1).single()
     ]);
     res.forEach(function (r) { if (r.error) throw r.error; });
-    return { products: res[0].data || [], offers: res[1].data || [], settings: res[2].data };
+    return { sections:res[0].data||[], products: res[1].data || [], offers: res[2].data || [], settings: res[3].data };
+  }
+
+  async function saveSection(section) {
+    var data={id:cleanText(section.id,50),title:cleanText(section.title,80),description:cleanText(section.description,240),
+      icon:cleanText(section.icon,20)||"hot",is_active:section.is_active!==false,sort_order:Number(section.sort_order)||0,updated_at:new Date().toISOString()};
+    var out=await init().from("menu_sections").upsert(data).select().single();
+    if(out.error)throw out.error; return out.data;
   }
 
   async function saveSettings(settings) {
@@ -229,6 +249,13 @@
     return url + "?v=" + Date.now();
   }
 
+  async function uploadOfferImage(offerId, file) {
+    var path=cleanText(offerId,80)+"/cover.webp",bucket=init().storage.from("offer-images");
+    var out=await bucket.upload(path,file,{upsert:true,contentType:"image/webp",cacheControl:"3600"});
+    if(out.error)throw out.error;
+    return bucket.getPublicUrl(path).data.publicUrl+"?v="+Date.now();
+  }
+
   async function clearAllOrders() {
     var out = await init().rpc("clear_all_orders");
     if (out.error) throw out.error;
@@ -239,5 +266,5 @@
     placeOrder: placeOrder, signIn: signIn, signOut: signOut, session: session, updatePassword: updatePassword,
     listOrders: listOrders, updateOrderStatus: updateOrderStatus, subscribeOrders: subscribeOrders,
     saveProduct: saveProduct, saveOffer: saveOffer, adminCatalog: adminCatalog, saveSettings: saveSettings,
-    uploadProductImage: uploadProductImage, clearAllOrders: clearAllOrders };
+    saveSection:saveSection, uploadProductImage: uploadProductImage, uploadOfferImage:uploadOfferImage, clearAllOrders: clearAllOrders };
 })(window);
