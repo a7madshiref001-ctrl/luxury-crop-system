@@ -20,8 +20,8 @@ const items = menu.sections.flatMap(section =>
 const names = new Set(items.map(item => item.n));
 const keys = new Set(items.map(item => item.k));
 
-pass(menu.sections.length === 8, `عدد الأقسام المعتمدة المتوقع 8، الموجود ${menu.sections.length}`);
-pass(items.length === 32, `عدد الأصناف المعتمدة المتوقع 32، الموجود ${items.length}`);
+pass(menu.sections.length === 9, `عدد الأقسام المعتمدة المتوقع 9، الموجود ${menu.sections.length}`);
+pass(items.length === 55, `عدد الأصناف المعتمدة المتوقع 55، الموجود ${items.length}`);
 pass(names.size === items.length, "يوجد اسم صنف مكرر");
 pass(keys.size === items.length, "يوجد مفتاح صورة مكرر");
 
@@ -51,7 +51,7 @@ pass(Array.isArray(sales.order.modes) && sales.order.modes.length === 1 && sales
   "الموقع يجب أن يقبل الطلب من الطاولة فقط");
 pass(Number.isInteger(sales.order.tables) && sales.order.tables > 0, "عدد الطاولات غير صالح");
 
-const atlasNumbers = new Set(items.map(item => Math.floor(item._imageIndex / 6) + 1));
+const atlasNumbers = new Set(items.filter(item => Number.isInteger(item._imageIndex)).map(item => Math.floor(item._imageIndex / 6) + 1));
 for (const i of atlasNumbers) {
   const file = path.join(root, "assets/img/atlases", `products-${String(i).padStart(2, "0")}.webp`);
   pass(fs.existsSync(file) && fs.statSync(file).size > 0, `ملف صور ناقص: ${path.basename(file)}`);

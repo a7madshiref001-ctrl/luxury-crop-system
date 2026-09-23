@@ -11,7 +11,7 @@
 <link rel="icon" href="assets/logo.png">
 <link rel="stylesheet" href="assets/fonts.css?v=20260920-qa">
 <link rel="stylesheet" href="assets/core.css?v=20260920-qa">
-<link rel="stylesheet" href="assets/owner.css?v=20260922-smart-qr">
+<link rel="stylesheet" href="assets/owner.css?v=20260923-visual-order">
 </head>
 <body class="auth-pending">
 
@@ -298,8 +298,11 @@
     <div class="grid g2" style="margin-bottom:16px">
       <div class="card">
         <div class="catalog-head"><h2>☕ المنتجات</h2><button class="btn btn-p btn-s" id="addProduct" type="button">+ إضافة منتج</button></div>
-        <div class="sub">غيّر الاسم والوصف والسعر والتوفر، ويظهر التعديل في المنيو بعد الحفظ.</div>
-        <input class="sfld" id="liveProductSearch" placeholder="🔍 ابحث عن منتج…">
+        <div class="sub">رتّب المنتجات من الأسهم؛ أول منتج في القائمة يظهر أولًا داخل قسمه في المنيو.</div>
+        <div class="catalog-filters">
+          <select class="sfld" id="liveProductSection" aria-label="تصفية المنتجات حسب القسم"></select>
+          <input class="sfld" id="liveProductSearch" placeholder="🔍 ابحث عن منتج…">
+        </div>
         <div id="liveProductList" class="editor-list"></div>
       </div>
       <div class="card">
@@ -309,7 +312,7 @@
       </div>
     </div>
     <div class="card" style="margin-bottom:16px">
-      <div class="catalog-head"><div><h2>🗂️ أقسام المنيو</h2><div class="sub">أضف قسمًا جديدًا أو عدّل اسمه وترتيبه وظهوره في المنيو.</div></div><button class="btn btn-p btn-s" id="addSection" type="button">+ إضافة قسم</button></div>
+      <div class="catalog-head"><div><h2>🗂️ أقسام المنيو</h2><div class="sub">استخدم الأسهم لترتيب الأقسام؛ أول قسم هنا يظهر أولًا للعميل.</div></div><button class="btn btn-p btn-s" id="addSection" type="button">+ إضافة قسم</button></div>
       <div id="liveSectionList" class="editor-list section-list"></div>
     </div>
     <div class="card">
@@ -405,13 +408,13 @@
 
 <audio id="orderBellAudio" preload="auto" src="assets/audio/order-up-bell.mp3?v=20260921"></audio>
 
-<script defer src="data/menu.js?v=20260923-product-audit"></script>
+<script defer src="data/menu.js?v=20260923-visual-order"></script>
 <script defer src="data/sales.js?v=20260921-combo-images"></script>
 <script defer src="data/backend-config.js?v=20260921-orders"></script>
 <script defer src="assets/vendor/supabase-2.116.0.js?v=2.116.0"></script>
-<script defer src="assets/backend.js?v=20260923-product-audit"></script>
+<script defer src="assets/backend.js?v=20260923-visual-order"></script>
 <script defer src="assets/sys.js?v=20260921-approved-menu"></script>
 <script defer src="assets/owner.js?v=20260922-smart-qr"></script>
-<script defer src="assets/owner-live.js?v=20260922-smart-qr"></script>
+<script defer src="assets/owner-live.js?v=20260923-visual-order"></script>
 </body>
 </html>

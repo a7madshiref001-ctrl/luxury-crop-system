@@ -40,8 +40,14 @@ for (const [section, list] of Object.entries(sales.addons || {})) {
 }
 
 let out = `-- Generated from data/menu.js and data/sales.js. Safe to run more than once.\n\n`;
+for (const [i, section] of (menu.sections || []).entries()) {
+  out += `insert into public.menu_sections (id,title,description,icon,is_active,sort_order) values (${q(section.id)},${q(section.title)},${q(section.desc || "")},${q(section.icon || "hot")},true,${(i + 1) * 10}) on conflict (id) do update set title=excluded.title,description=excluded.description,icon=excluded.icon,sort_order=excluded.sort_order;\n`;
+}
+out += "\n";
 for (const [i, p] of products.entries()) {
-  out += `insert into public.products (id,name,description,section_id,price,size_prices,is_active,sold_out,sort_order) values (${q(p.id)},${q(p.name)},${q(p.description)},${q(p.section)},${p.price},${p.sizes ? json(p.sizes) : "null"},true,false,${i}) on conflict (id) do update set name=excluded.name,description=excluded.description,section_id=excluded.section_id,price=excluded.price,size_prices=excluded.size_prices,sort_order=excluded.sort_order;\n`;
+  const sectionItems = products.filter(item => item.section === p.section);
+  const sectionOrder = sectionItems.findIndex(item => item.id === p.id);
+  out += `insert into public.products (id,name,description,section_id,price,size_prices,is_active,sold_out,sort_order) values (${q(p.id)},${q(p.name)},${q(p.description)},${q(p.section)},${p.price},${p.sizes ? json(p.sizes) : "null"},true,false,${(sectionOrder + 1) * 10}) on conflict (id) do update set name=excluded.name,description=excluded.description,section_id=excluded.section_id,price=excluded.price,size_prices=excluded.size_prices,sort_order=excluded.sort_order;\n`;
 }
 out += "\n";
 for (const [i, offer] of (sales.combos || []).entries()) {

@@ -87,6 +87,12 @@
           else item.p = Number(p.price);
           return p.is_active !== false;
         });
+        cat.items.sort(function (a, b) {
+          var aProduct = byId[a.k], bProduct = byId[b.k];
+          var aOrder = aProduct ? Number(aProduct.sort_order) : Number.MAX_SAFE_INTEGER;
+          var bOrder = bProduct ? Number(bProduct.sort_order) : Number.MAX_SAFE_INTEGER;
+          return aOrder - bOrder;
+        });
       });
     });
     (data.products || []).filter(function (p) { return p.is_active !== false && !seen[p.id]; }).forEach(function (p) {
@@ -230,6 +236,19 @@
     return out.data;
   }
 
+  async function reorderRows(table, ids) {
+    var c = init(), now = new Date().toISOString();
+    var updates = (ids || []).map(function (id, index) {
+      return c.from(table).update({ sort_order:(index + 1) * 10, updated_at:now }).eq("id", cleanText(id, 80));
+    });
+    var results = await Promise.all(updates);
+    results.forEach(function (result) { if (result.error) throw result.error; });
+    return true;
+  }
+
+  function reorderProducts(ids) { return reorderRows("products", ids); }
+  function reorderSections(ids) { return reorderRows("menu_sections", ids); }
+
   async function adminCatalog() {
     var c = init();
     var res = await Promise.all([
@@ -297,5 +316,6 @@
     placeOrder: placeOrder, resolveServicePoint:resolveServicePoint, signIn: signIn, signOut: signOut, session: session, updatePassword: updatePassword,
     listOrders: listOrders, updateOrderStatus: updateOrderStatus, subscribeOrders: subscribeOrders,
     saveProduct: saveProduct, saveOffer: saveOffer, adminCatalog: adminCatalog, saveSettings: saveSettings,
-    saveSection:saveSection, saveServicePoint:saveServicePoint, regenerateServicePoint:regenerateServicePoint, uploadProductImage: uploadProductImage, uploadOfferImage:uploadOfferImage, clearAllOrders: clearAllOrders };
+    saveSection:saveSection, reorderProducts:reorderProducts, reorderSections:reorderSections,
+    saveServicePoint:saveServicePoint, regenerateServicePoint:regenerateServicePoint, uploadProductImage: uploadProductImage, uploadOfferImage:uploadOfferImage, clearAllOrders: clearAllOrders };
 })(window);

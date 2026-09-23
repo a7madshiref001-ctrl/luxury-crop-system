@@ -647,3 +647,23 @@ window.MENU = {
   });
   window.MENU.sections = window.MENU.sections.filter(function (section) { return section.cats.length; });
 })();
+
+/* نبدأ بالصور الأكثر جذبًا بصريًا، مع الاحتفاظ بمؤشر كل صورة في الأطلس. */
+(function sortMenuForVisualImpact() {
+  var sectionOrder = ["matcha", "cold", "hibiscus", "mojito", "hot", "cold-v60", "pourover", "espresso", "bakery"];
+  var itemOrder = {
+    matcha:["ماتشا بِنك","ماتشا لافندر","ماتشا فراولة","ماتشا توت","ماتشا كوكنت","ماتشا فانيليا","ماتشا كلاسيك"],
+    cold:["آيس لاتيه بالعسل","آيس لاتيه كراميل","سبانش لاتيه بارد","آيس أمريكانو","حليب فراولة","آيس تي","لاتيه بارد","آيس شوكلت","حليب روز","فريدو"],
+    hibiscus:["كركديه روز","كركديه توت","كركديه كلاسيك","كركديه فراولة"],
+    mojito:["موهيتو توت أزرق","موهيتو خوخ"],
+    hot:["لاتيه كراميل","سبانش لاتيه حار","لاتيه حار","كابتشينو","فلات وايت","كورتادو","ماكياتو","قهوة سعودية","قهوة تركية","قهوة اليوم محصول إثيوبي","أمريكانو حار"],
+    "cold-v60":["كولد برو","سادو اثيوبيا بارد","بينسا اثيوبيا بارد","بيرياس بيرو بارد","لاهرموسا كولومبيا بارد","وهاج اثيوبيا بارد"],
+    bakery:["ماتيلدا كيك شوكلاته","كوكنت مانجو","تشيز توت أزرق","تشيز توت أحمر","تراميسو","سينابون كلاسيك","تشيز كيك مانجو","كوكيز فانيليا","كوكيز شوكلت"]
+  };
+  function rank(list, value) { var index=list.indexOf(value); return index<0?999:index; }
+  window.MENU.sections.sort(function(a,b){return rank(sectionOrder,a.id)-rank(sectionOrder,b.id);});
+  window.MENU.sections.forEach(function(section){
+    var preferred=itemOrder[section.id]; if(!preferred)return;
+    (section.cats||[]).forEach(function(cat){cat.items.sort(function(a,b){return rank(preferred,a.n)-rank(preferred,b.n);});});
+  });
+})();
