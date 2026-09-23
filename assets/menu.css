@@ -93,7 +93,7 @@ svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;
   color:transparent;-webkit-text-fill-color:transparent;
   clip-path:inset(-12% -8% -12% 100%);filter:blur(6px);
   animation:writeIn 1s cubic-bezier(.65,0,.35,1) .15s forwards}
-.sp-brand{width:min(360px,78vw);height:clamp(150px,42vw,195px);opacity:0;animation:brandIn 1s cubic-bezier(.65,0,.35,1) .15s forwards}
+.sp-brand{width:min(360px,78vw);height:auto;opacity:0;animation:brandIn 1s cubic-bezier(.65,0,.35,1) .15s forwards}
 @keyframes brandIn{from{opacity:0;transform:translateY(12px);filter:blur(6px)}to{opacity:1;transform:none;filter:blur(0)}}
 .brand-light{display:block!important}
 .brand-dark{display:none!important}
@@ -155,8 +155,8 @@ body.go #hero .an:nth-child(4){transition-delay:.3s}
   filter:saturate(.94) contrast(1.035) brightness(.96)}
 
 .wordmark{position:relative;margin:22px 0 0;padding:0;will-change:opacity,transform;width:min(330px,76vw)}
-.wordmark img{display:block;width:100%;height:clamp(138px,41vw,178px);filter:drop-shadow(0 12px 26px rgba(20,16,13,.2))}
-.stacked-logo{object-fit:cover;object-position:50% 45%;background:#000;border-radius:18px}
+.wordmark img{display:block;width:100%;height:auto;filter:drop-shadow(0 6px 18px rgba(53,39,27,.08))}
+.stacked-logo{object-fit:contain;background:transparent;border-radius:0}
 .hero-tagline{display:flex;align-items:center;justify-content:center;gap:12px;margin:9px 0 0;
   color:var(--deep);font-size:14px;font-weight:600;letter-spacing:.02em}
 .hero-tagline::before,.hero-tagline::after{content:"";width:40px;height:1px;
@@ -394,7 +394,7 @@ footer .fw{font-family:var(--fd);font-weight:700;font-size:44px;line-height:1.15
   background:linear-gradient(180deg,var(--deep),var(--br));
   -webkit-background-clip:text;background-clip:text;
   color:transparent;-webkit-text-fill-color:transparent}
-footer .fw img{display:block;width:min(290px,68vw);height:157px}
+footer .fw img{display:block;width:min(290px,68vw);height:auto}
 footer .ft{font-size:11.5px;letter-spacing:5px;margin-top:14px}
 .flinks{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:20px}
 .flinks a{display:inline-flex;align-items:center;gap:7px;padding:9px 17px;
