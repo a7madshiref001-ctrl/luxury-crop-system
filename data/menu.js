@@ -555,6 +555,11 @@ window.MENU = {
     "بيرياس بيرو حار": 1,
     "لاهرموسا كولومبيا حار": 1,
     "وهاج اثيوبيا حار": 1,
+    "سادو اثيوبيا بارد": 1,
+    "بينسا اثيوبيا بارد": 1,
+    "بيرياس بيرو بارد": 1,
+    "لاهرموسا كولومبيا بارد": 1,
+    "وهاج اثيوبيا بارد": 1,
     "كولد برو": 1,
     "كوكيز فانيليا": 1,
     "كوكيز شوكلت": 1,
@@ -566,34 +571,78 @@ window.MENU = {
     "تشيز توت أزرق": 1,
     "تشيز توت أحمر": 1,
     "إسبريسو": 1,
+    "ماكياتو": 1,
     "أمريكانو حار": 1,
+    "كورتادو": 1,
+    "فلات وايت": 1,
+    "كابتشينو": 1,
     "لاتيه حار": 1,
     "سبانش لاتيه حار": 1,
+    "لاتيه كراميل": 1,
+    "قهوة اليوم محصول إثيوبي": 1,
     "قهوة سعودية": 1,
+    "قهوة تركية": 1,
+    "فريدو": 1,
     "آيس أمريكانو": 1,
     "لاتيه بارد": 1,
     "سبانش لاتيه بارد": 1,
     "آيس لاتيه كراميل": 1,
     "آيس شوكلت": 1,
+    "حليب فراولة": 1,
     "حليب روز": 1,
+    "آيس تي": 1,
     "ماتشا كلاسيك": 1,
     "ماتشا لافندر": 1,
     "ماتشا توت": 1,
+    "ماتشا فراولة": 1,
     "ماتشا فانيليا": 1,
     "ماتشا كوكنت": 1,
-    "كركديه كلاسيك": 1
+    "ماتشا بِنك": 1,
+    "كركديه كلاسيك": 1,
+    "كركديه روز": 1,
+    "كركديه توت": 1,
+    "كركديه فراولة": 1,
+    "موهيتو توت أزرق": 1,
+    "موهيتو خوخ": 1
   };
   var imageIndex = 0;
   window.MENU.sections.forEach(function (section) {
+    if (section.id === "cold-v60") section._lockCatalogCopy = true;
     (section.cats || []).forEach(function (cat) {
-      (cat.items || []).forEach(function (item) { item._imageIndex = imageIndex++; });
+      (cat.items || []).forEach(function (item) {
+        item._imageIndex = imageIndex++;
+
+        /* تصحيح الربط حسب الصور الأصلية المرسلة من العميل. */
+        if (section.id === "cold-v60" && item.n !== "كولد برو") {
+          item._imageIndex = 40;
+        }
+        if (item.k === "170291") {
+          item.n = "فريدو";
+          item.d = "إسبريسو مبرد ومخفوق";
+          item._imageIndex = 5;
+        }
+        if (item.k === "170292") {
+          item._remoteImage = "assets/img/products/iced-americano-from-client.png";
+        }
+        if (item.k === "170288") {
+          item._remoteImage = "assets/img/products/hot-caramel-latte-from-client.png";
+        }
+        if (item.k === "176540") {
+          item.n = "قهوة اليوم محصول إثيوبي";
+          item.d = "قهوة اليوم محضرة من محصول إثيوبي";
+        }
+      });
       cat.items = (cat.items || []).filter(function (item) { return approved[item.n]; });
     });
     section.cats = (section.cats || []).filter(function (cat) { return cat.items.length; });
-    if (section.id === "cold-v60") {
-      section.title = "كولد برو";
-      section.desc = "قهوة مقطّرة على البارد بتركيز عالي";
-      section.cats.forEach(function (cat) { cat.title = "كولد برو"; });
+    if (section.id === "cold") {
+      section.cats[0].items.push({
+        n: "آيس لاتيه بالعسل",
+        k: "cold-honey-latte",
+        d: "آيس لاتيه بنكهة العسل",
+        p: 18,
+        _remoteImage: "assets/img/products/iced-honey-latte.jpeg"
+      });
     }
   });
   window.MENU.sections = window.MENU.sections.filter(function (section) { return section.cats.length; });

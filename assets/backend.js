@@ -56,13 +56,18 @@
   function applyCatalog(menu, sales, data) {
     if (!data) return;
     if (data.sections && data.sections.length) {
-      var existingSections={}; (menu.sections||[]).forEach(function(s){existingSections[s.id]=s;});
+      var originalSections=(menu.sections||[]).slice(), existingSections={}, remoteSectionIds={};
+      originalSections.forEach(function(s){existingSections[s.id]=s;});
+      (data.sections||[]).forEach(function(s){remoteSectionIds[s.id]=true;});
       menu.sections=(data.sections||[]).filter(function(s){return s.is_active!==false;}).map(function(s){
         var current=existingSections[s.id]||{id:s.id,cats:[{id:s.id+"-a",title:s.title,items:[]}]};
-        current.title=cleanText(s.title,80); current.desc=cleanText(s.description,240); current.icon=cleanText(s.icon,20)||"hot";
+        if (!current._lockCatalogCopy) {
+          current.title=cleanText(s.title,80); current.desc=cleanText(s.description,240); current.icon=cleanText(s.icon,20)||"hot";
+        }
         if(!current.cats||!current.cats.length)current.cats=[{id:s.id+"-a",title:s.title,items:[]}];
         current.cats[0].title=current.title; return current;
       });
+      originalSections.forEach(function(s){if(!remoteSectionIds[s.id])menu.sections.push(s);});
     }
     var byId = {}, seen = {};
     (data.products || []).forEach(function (p) { byId[p.id] = p; });
@@ -76,7 +81,8 @@
           item.d = cleanText(p.description, 500);
           item._remoteSoldOut = !!p.sold_out;
           item._dbId = p.id;
-          item._remoteImage = cleanText(p.image_url, 500);
+          var remoteImage = cleanText(p.image_url, 500);
+          if (remoteImage) item._remoteImage = remoteImage;
           if (Array.isArray(p.size_prices) && p.size_prices.length) item.s = p.size_prices.map(Number);
           else item.p = Number(p.price);
           return p.is_active !== false;
