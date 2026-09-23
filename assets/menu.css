@@ -18,6 +18,7 @@
   --sheet-bk:rgba(18,18,17,.48);
   --arch:999px 999px 24px 24px / 34% 34% 4% 4%;
   --fd:'Aref Ruqaa',serif;
+  --fh:'Changa','IBM Plex Sans Arabic',sans-serif;
 }
 [data-theme="dark"]{
   --bg:#161009; --bg2:#1D140C; --card:#221912; --card2:#2B2017;
@@ -218,7 +219,7 @@ body.go #hero .an:nth-child(4){transition-delay:.3s}
 main{position:relative;z-index:2}
 .rail-sec{max-width:900px;margin:0 auto;padding:30px 0 6px}
 .rail-head{padding:0 18px;margin-bottom:14px}
-.rail-head h2{font-family:var(--fd);font-weight:700;font-size:clamp(22px,5.4vw,28px);color:var(--ink);line-height:1.5}
+.rail-head h2{font-family:var(--fh);font-weight:800;font-size:clamp(22px,5.4vw,28px);color:var(--ink);line-height:1.35}
 .rail-head p{font-size:12.5px;color:var(--mut);margin-top:-2px}
 .rail{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;
   padding:4px 18px 16px;scrollbar-width:none}
@@ -293,8 +294,8 @@ section.sec{padding:36px 0 6px;scroll-margin-top:78px;content-visibility:auto;co
 .sec-icon svg{width:28px;height:28px;overflow:visible}
 .sec-icon path,.sec-icon circle,.sec-icon rect{fill:none;stroke:currentColor;stroke-width:1.7;
   stroke-linecap:round;stroke-linejoin:round}
-.sec-title{font-family:var(--fd);font-weight:700;font-size:clamp(25px,6vw,33px);
-  color:var(--ink);line-height:1.5;
+.sec-title{font-family:var(--fh);font-weight:800;font-size:clamp(25px,6vw,33px);
+  color:var(--ink);line-height:1.35;
   opacity:0;transform:translateX(14px);transition:.8s cubic-bezier(.2,.7,.2,1)}
 .sec-sub{font-size:12.5px;color:var(--mut);margin-top:-4px;
   opacity:0;transition:opacity .8s ease .2s}
