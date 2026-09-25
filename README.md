@@ -38,9 +38,9 @@ node scripts/qa.mjs
 node scripts/backend-contract-test.mjs
 ```
 
-المنيو النهائي: https://luxury-crop-system.pages.dev/
+المنيو النهائي: https://www.luxurycrop.site/
 
-لوحة الإدارة: https://luxury-crop-system.pages.dev/owner
+لوحة الإدارة: https://www.luxurycrop.site/owner
 
 كل روابط النسخ وأكواد QR تُبنى من `SITE_CONFIG.menuUrl` فقط. أي استضافة قديمة تعيد التوجيه إلى الرابط النهائي، والـQR يُنشأ محليًا داخل لوحة الإدارة من دون خدمة خارجية.
 

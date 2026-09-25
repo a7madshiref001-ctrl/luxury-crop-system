@@ -86,9 +86,9 @@ pass(migration.includes("enable row level security"), "RLS غير مفعّل ف�
 pass(migration.includes("security definer") && migration.includes("set search_path = ''"), "دالة الطلب المحمية لا تثبّت search_path");
 pass(migration.includes("rate_limited") && migration.includes("idempotency_key"), "الحماية من التكرار أو الإغراق غير مكتملة");
 pass(migration.includes("revoke all on public.admin_users"), "صلاحيات الجداول لم تُسحب افتراضيًا");
-pass(site && site.menuUrl === "https://luxury-crop-system.pages.dev/", "رابط المنيو النهائي غير مضبوط في SITE_CONFIG");
-pass(site && site.adminUrl === "https://luxury-crop-system.pages.dev/owner", "رابط لوحة الإدارة النهائي غير مضبوط");
-pass(indexHtml.includes('rel="canonical" href="https://luxury-crop-system.pages.dev/"'), "الرابط canonical النهائي ناقص من المنيو");
+pass(site && site.menuUrl === "https://www.luxurycrop.site/", "رابط المنيو النهائي غير مضبوط في SITE_CONFIG");
+pass(site && site.adminUrl === "https://www.luxurycrop.site/owner", "رابط لوحة الإدارة النهائي غير مضبوط");
+pass(indexHtml.includes('rel="canonical" href="https://www.luxurycrop.site/"'), "الرابط canonical النهائي ناقص من المنيو");
 pass(!/<a\b/i.test(indexHtml), "يوجد رابط قابل للنقر في واجهة المنيو غير الرابط النهائي");
 const runtimeText = [indexHtml, fs.readFileSync(path.join(root, "owner.html"), "utf8"), menuJs, ownerJs, ownerLiveJs, fs.readFileSync(path.join(root, "data/menu.js"), "utf8"), fs.readFileSync(path.join(root, "data/sales.js"), "utf8")].join("\n");
 for (const forbidden of ["api.qrserver.com", "wa.me/", "instagram.com/", "maps.app.goo.gl/"]) {

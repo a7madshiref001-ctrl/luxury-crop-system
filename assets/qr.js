@@ -3,7 +3,7 @@
 
   function finalMenuUrl(locationToken) {
     var config = w.SITE_CONFIG || {};
-    var url = new URL(config.menuUrl || "https://luxury-crop-system.pages.dev/");
+    var url = new URL(config.menuUrl || "https://www.luxurycrop.site/");
     url.pathname = "/";
     url.search = "";
     url.hash = "";
@@ -12,7 +12,7 @@
   }
 
   function assertFinalUrl(value) {
-    var expected = String((w.SITE_CONFIG || {}).canonicalHost || "luxury-crop-system.pages.dev").toLowerCase();
+    var expected = String((w.SITE_CONFIG || {}).canonicalHost || "www.luxurycrop.site").toLowerCase();
     var url = new URL(value);
     if (url.protocol !== "https:" || url.hostname.toLowerCase() !== expected) {
       throw new Error("QR links must use the final production host");

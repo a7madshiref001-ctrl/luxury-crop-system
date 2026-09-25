@@ -11,9 +11,9 @@ window.BACKEND_CONFIG = {
 
 /* المصدر الوحيد لكل الروابط العامة والـQR. لا تُولّد رابطًا من location.href. */
 window.SITE_CONFIG = Object.freeze({
-  menuUrl: "https://luxury-crop-system.pages.dev/",
-  adminUrl: "https://luxury-crop-system.pages.dev/owner",
-  canonicalHost: "luxury-crop-system.pages.dev"
+  menuUrl: "https://www.luxurycrop.site/",
+  adminUrl: "https://www.luxurycrop.site/owner",
+  canonicalHost: "www.luxurycrop.site"
 });
 
 /* قفل متصفح مساعد؛ الحماية الأساسية تظل في Supabase Auth وحدود الـIP. */
