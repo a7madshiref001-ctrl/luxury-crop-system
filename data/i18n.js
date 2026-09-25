@@ -2,11 +2,12 @@
   "use strict";
 
   var KEY = "luxurycrop.language.v1";
+  var DEFAULT_LANGUAGE = "ar";
   var params = new URLSearchParams(w.location.search);
   var requested = params.get("lang");
   var saved = "";
   try { saved = localStorage.getItem(KEY) || ""; } catch (_) {}
-  var lang = requested === "en" || requested === "ar" ? requested : (saved === "en" ? "en" : "ar");
+  var lang = requested === "en" || requested === "ar" ? requested : (saved === "en" ? "en" : DEFAULT_LANGUAGE);
 
   var en = {
     "قهوة مختصة": "Specialty Coffee",
@@ -269,4 +270,3 @@
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === "en" ? "ltr" : "rtl";
 })(window);
-

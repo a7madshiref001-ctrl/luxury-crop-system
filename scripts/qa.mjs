@@ -72,6 +72,17 @@ const requiredClientIds = ["hero", "nav", "menu", "combos", "bar", "shItem", "sh
 const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
 requiredClientIds.forEach(id => pass(new RegExp(`id=["']${id}["']`).test(indexHtml), `عنصر أساسي ناقص: #${id}`));
 
+const i18nWindow = { location: { search: "" } };
+const i18nDocument = { documentElement: { lang: "", dir: "" } };
+vm.runInNewContext(fs.readFileSync(path.join(root, "data/i18n.js"), "utf8"), {
+  window: i18nWindow,
+  document: i18nDocument,
+  localStorage: { getItem: () => null, setItem: () => {} },
+  URLSearchParams
+});
+pass(i18nWindow.LC_I18N.lang === "ar" && i18nDocument.documentElement.dir === "rtl",
+  "اللغة الافتراضية للزيارة الأولى يجب أن تكون العربية");
+
 const menuJs = fs.readFileSync(path.join(root, "assets/menu.js"), "utf8");
 const backendJs = fs.readFileSync(path.join(root, "assets/backend.js"), "utf8");
 const ownerJs = fs.readFileSync(path.join(root, "assets/owner.js"), "utf8");
