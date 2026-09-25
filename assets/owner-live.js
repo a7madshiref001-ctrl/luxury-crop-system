@@ -9,6 +9,65 @@
   var STATUS = { new: "جديد", preparing: "قيد التحضير", ready: "جاهز", completed: "مكتمل", cancelled: "ملغي" };
   var esc = function (v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]; }); };
   var money = function (v) { return Number(v || 0).toLocaleString("ar-SA", { maximumFractionDigits: 2 }); };
+  var SECURITY = Object.assign({ maxFailedAttempts: 5, attemptWindowMs: 900000, lockoutMs: 900000 }, w.ADMIN_SECURITY || {});
+  var LOGIN_GUARD_KEY = "luxurycrop.admin.login-guard.v1", guardTimer = null;
+
+  function readGuard() {
+    try {
+      var value = JSON.parse(localStorage.getItem(LOGIN_GUARD_KEY) || "{}");
+      return { attempts: Array.isArray(value.attempts) ? value.attempts.filter(Number.isFinite) : [], lockedUntil: Number(value.lockedUntil) || 0 };
+    } catch (_) { return { attempts: [], lockedUntil: 0 }; }
+  }
+  function writeGuard(value) {
+    try { localStorage.setItem(LOGIN_GUARD_KEY, JSON.stringify(value)); } catch (_) { }
+  }
+  function currentGuard() {
+    var now = Date.now(), value = readGuard();
+    value.attempts = value.attempts.filter(function (time) { return now - time < SECURITY.attemptWindowMs; });
+    if (value.lockedUntil && value.lockedUntil <= now) value = { attempts: [], lockedUntil: 0 };
+    writeGuard(value);
+    return value;
+  }
+  function isServerLimited(err) {
+    return Number(err && err.status) === 429 || /rate.?limit|too many requests/i.test(String(err && err.message || ""));
+  }
+  function refreshLoginGuard() {
+    clearTimeout(guardTimer);
+    var value = currentGuard(), now = Date.now(), locked = value.lockedUntil > now;
+    var email = $("adminEmail"), password = $("adminPassword"), button = $("loginBtn"), status = $("loginSecurity");
+    if (!email || !password || !button || !status) return { locked: locked, remaining: 0 };
+    email.disabled = locked; password.disabled = locked; button.disabled = locked;
+    if (locked) {
+      var seconds = Math.max(1, Math.ceil((value.lockedUntil - now) / 1000));
+      var minutes = Math.floor(seconds / 60), rest = String(seconds % 60).padStart(2, "0");
+      button.textContent = "المحاولات موقوفة";
+      status.textContent = "تم إيقاف تسجيل الدخول مؤقتًا. جرّب بعد " + minutes + ":" + rest + ".";
+      guardTimer = w.setTimeout(refreshLoginGuard, 1000);
+    } else {
+      button.textContent = "دخول آمن";
+      var remaining = Math.max(0, SECURITY.maxFailedAttempts - value.attempts.length);
+      status.textContent = value.attempts.length ? "متبقي " + remaining + " من 5 محاولات خلال 15 دقيقة." : "مسموح بـ5 محاولات فقط خلال 15 دقيقة.";
+    }
+    return { locked: locked, remaining: Math.max(0, SECURITY.maxFailedAttempts - value.attempts.length) };
+  }
+  function recordLoginFailure(err) {
+    var value = currentGuard(), now = Date.now();
+    value.attempts.push(now);
+    if (isServerLimited(err) || value.attempts.length >= SECURITY.maxFailedAttempts) value.lockedUntil = now + SECURITY.lockoutMs;
+    writeGuard(value);
+    return refreshLoginGuard();
+  }
+  function clearLoginGuard() {
+    try { localStorage.removeItem(LOGIN_GUARD_KEY); } catch (_) { }
+    refreshLoginGuard();
+  }
+  function passwordIssue(value) {
+    value = String(value || "");
+    if (value.length < 12) return "استخدم 12 حرفًا على الأقل.";
+    var groups = [/[a-z]/.test(value), /[A-Z]/.test(value), /\d/.test(value), /[^A-Za-z0-9]/.test(value)].filter(Boolean).length;
+    if (groups < 4) return "لازم كلمة المرور تشمل حروفًا كبيرة وصغيرة ورقمًا ورمزًا.";
+    return "";
+  }
 
   function gate(message, setup) {
     d.body.classList.add("auth-pending");
@@ -17,6 +76,7 @@
     $("loginHelp").textContent = message;
     ["adminEmail", "adminPassword", "loginBtn"].forEach(function (id) { $(id).hidden = !!setup; });
     $("inviteSetup").hidden = true;
+    if (!setup) refreshLoginGuard();
   }
   function inviteGate() {
     d.body.classList.add("auth-pending");
@@ -50,6 +110,7 @@
   }
   function errorText(err) {
     var msg = String(err && err.message || "");
+    if (isServerLimited(err)) return "تم إيقاف المحاولات مؤقتًا لحماية الحساب";
     if (/invalid login/i.test(msg)) return "البريد أو كلمة المرور غير صحيحة";
     if (/not authorized|permission|row-level/i.test(msg)) return "الحساب غير مصرح له بإدارة المتجر";
     return "تعذّر الاتصال. تأكد من الإنترنت وحاول مرة ثانية.";
@@ -84,19 +145,37 @@
     e.preventDefault();
     var button = $("loginBtn");
     $("loginError").textContent = "";
+    var guard = refreshLoginGuard();
+    if (guard.locked) return;
+    if (!$("adminEmail").checkValidity() || !$("adminPassword").value) {
+      $("loginError").textContent = "اكتب بريدًا صحيحًا وكلمة المرور.";
+      return;
+    }
+    if ($("adminWebsite").value) {
+      recordLoginFailure(new Error("blocked"));
+      $("loginError").textContent = "تعذّر تسجيل الدخول.";
+      return;
+    }
+    var started = Date.now();
     button.disabled = true; button.textContent = "جاري التحقق…";
     try {
       await B.signIn($("adminEmail").value, $("adminPassword").value);
+      clearLoginGuard();
       openApp(); await start();
-    } catch (err) { $("loginError").textContent = errorText(err); }
-    finally { button.disabled = false; button.textContent = "دخول آمن"; }
+    } catch (err) {
+      var wait = Math.max(0, 700 - (Date.now() - started));
+      if (wait) await new Promise(function (resolve) { w.setTimeout(resolve, wait); });
+      guard = recordLoginFailure(err);
+      $("loginError").textContent = guard.locked ? "توقفت المحاولات لمدة 15 دقيقة لحماية الحساب." : errorText(err);
+    } finally { if (!refreshLoginGuard().locked) { button.disabled = false; button.textContent = "دخول آمن"; } }
   }
 
   async function finishInvite() {
     var button = $("invitePasswordBtn");
     var password = $("invitePassword").value;
     $("loginError").textContent = "";
-    if (password.length < 10) { $("loginError").textContent = "استخدم 10 أحرف على الأقل."; return; }
+    var issue = passwordIssue(password);
+    if (issue) { $("loginError").textContent = issue; return; }
     if (password !== $("invitePasswordConfirm").value) { $("loginError").textContent = "كلمتا المرور غير متطابقتين."; return; }
     button.disabled = true; button.textContent = "جاري تفعيل الحساب…";
     try {
@@ -327,7 +406,7 @@
       await refreshCatalog();
     }catch(err){button.disabled=false;alert("تعذّر حفظ الترتيب. حاول مرة ثانية.");}
   }
-  function servicePointLink(point){var u=new URL("index.html",w.location.href);u.search="";u.hash="";u.searchParams.set("loc",point.token);return u.href;}
+  function servicePointLink(point){return w.LuxuryQR.finalMenuUrl(point.token);}
   function renderPointList(kind,target){
     var points=state.servicePoints.filter(function(p){return p.kind===kind;});
     $(target).innerHTML=points.map(function(p){var link=servicePointLink(p);return '<div class="editor-row service-point-row"><div><b>'+esc(p.label)+'</b><span class="point-kind">'+(p.is_active?'نشط':'متوقف')+(p.reference_no?' · '+esc(p.reference_no):' · كود عام')+'</span><div class="service-link">'+esc(link)+'</div></div><div class="service-actions"><button class="btn btn-g btn-s" data-copy-point="'+esc(p.id)+'">نسخ الرابط</button><button class="btn btn-g btn-s" data-qr-point="'+esc(p.id)+'">QR</button><button class="btn btn-g btn-s" data-edit-point="'+esc(p.id)+'">تعديل</button><button class="btn btn-g btn-s danger-soft" data-renew-point="'+esc(p.id)+'">تجديد</button></div></div>';}).join("")||'<div class="empty-live">لا توجد نقاط بعد</div>';
@@ -429,7 +508,12 @@
     catch(err){alert("تعذّر حفظ وضع الـQR");}finally{button.disabled=false;}
   }
   async function copyPoint(id){var p=state.servicePoints.find(function(x){return x.id===id;});if(!p)return;try{await navigator.clipboard.writeText(servicePointLink(p));alert("تم نسخ رابط "+p.label+" ✅");}catch(e){alert(servicePointLink(p));}}
-  function openPointQr(id){var p=state.servicePoints.find(function(x){return x.id===id;});if(!p)return;var url="https://api.qrserver.com/v1/create-qr-code/?size=700x700&data="+encodeURIComponent(servicePointLink(p));w.open(url,"_blank","noopener,noreferrer");}
+  function openPointQr(id){
+    var p=state.servicePoints.find(function(x){return x.id===id;}); if(!p)return;
+    $("qrDialogTitle").textContent="QR — "+p.label;
+    try{w.LuxuryQR.render($("qrDialogCode"),servicePointLink(p),"QR "+p.label);$("qrDialog").showModal();}
+    catch(_){alert("تعذّر إنشاء كود QR. حدّث الصفحة وحاول مرة ثانية.");}
+  }
   async function renewPoint(id){var p=state.servicePoints.find(function(x){return x.id===id;});if(!p||!w.confirm("تجديد كود "+p.label+"؟ النسخ المطبوعة القديمة ستتوقف فورًا."))return;try{await B.regenerateServicePoint(id);await refreshCatalog();alert("تم إنشاء كود جديد ✅");}catch(e){alert("تعذّر تجديد الكود");}}
   async function clearOrders() {
     if (!w.confirm("سيتم حذف كل الطلبات الحالية نهائيًا وإعادة العدّاد من رقم 1. هل أنت متأكد؟")) return;
@@ -448,7 +532,8 @@
     var password = $("newAdminPassword").value;
     var save = $("passwordSave");
     $("passwordError").textContent = "";
-    if (password.length < 10) { $("passwordError").textContent = "استخدم 10 أحرف على الأقل."; return; }
+    var issue = passwordIssue(password);
+    if (issue) { $("passwordError").textContent = issue; return; }
     if (password !== $("confirmAdminPassword").value) { $("passwordError").textContent = "كلمتا المرور غير متطابقتين."; return; }
     save.disabled = true; save.textContent = "جاري الحفظ…";
     try {
@@ -470,6 +555,9 @@
     $("passwordClose").addEventListener("click",function(){$("passwordDialog").close();});
     $("passwordCancel").addEventListener("click",function(){$("passwordDialog").close();});
     $("passwordForm").addEventListener("submit",savePassword);
+    $("qrClose").addEventListener("click",function(){$("qrDialog").close();});
+    $("qrDone").addEventListener("click",function(){$("qrDialog").close();});
+    $("qrCopy").addEventListener("click",async function(){var url=$("qrDialogCode").dataset.qrUrl||"";if(!url)return;try{await navigator.clipboard.writeText(url);this.textContent="تم النسخ ✓";var button=this;w.setTimeout(function(){button.textContent="نسخ الرابط النهائي";},1400);}catch(_){alert(url);}});
     $("liveProductSearch").addEventListener("input",function(){renderProducts(this.value);});
     $("liveProductSection").addEventListener("change",function(){renderProducts($("liveProductSearch").value);});
     $("addProduct").addEventListener("click",function(){openProduct("");});

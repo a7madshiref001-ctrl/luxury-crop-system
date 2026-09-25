@@ -333,10 +333,8 @@
     var c = (o.customers || []).slice().reverse();
     if (q) c = c.filter(function (x) { return (x.name || "").indexOf(q) > -1 || (x.phone || "").indexOf(q) > -1; });
     $("cusList").innerHTML = c.slice(0, 200).map(function (x) {
-      var digits = String(x.phone || "").replace(/\D/g, "").replace(/^0/, "966");
       return '<div class="rw"><div class="ix">👤</div>' +
         '<div class="nm"><b>' + esc(x.name || "—") + '</b><span class="mono">' + esc(x.phone) + "</span></div>" +
-        (digits ? '<a class="btn btn-g btn-s no-print" href="https://wa.me/' + digits + '" target="_blank" rel="noopener noreferrer">واتساب</a>' : "") +
         '<div class="vl">' + money(x.spent || 0) + "</div></div>";
     }).join("") || empty("لسه ما فيه أرقام — تتجمّع لما العميل يرسل طلب");
   }
@@ -393,19 +391,10 @@
 
   /* ---------------- ٩) الروابط ---------------- */
   function links() {
-    var base = location.href.replace(/owner\.html.*$/, "");
-    var menuUrl = base + "index.html";
-    $("links").innerHTML =
-      linkRow("👥 منيو العميل", menuUrl, "ده اللي بيتحط على الترابيزة") +
-      linkRow("🔐 لوحة الإدارة", base + "owner.html", "محمية بتسجيل دخول وصلاحيات مدير");
-    $("qr").innerHTML =
-      '<img alt="QR" style="width:190px;height:190px;border-radius:16px;background:#fff;padding:9px" ' +
-      'src="https://api.qrserver.com/v1/create-qr-code/?size=380x380&data=' + encodeURIComponent(menuUrl) + '" ' +
-      'referrerpolicy="no-referrer">';
-    var qrImg = $("qr").querySelector("img");
-    if (qrImg) qrImg.addEventListener("error", function () {
-      $("qr").innerHTML = '<div class="note">تعذّر تحميل كود QR الآن. جرّب مرة ثانية.</div>';
-    });
+    var menuUrl = w.LuxuryQR.finalMenuUrl();
+    $("links").innerHTML = linkRow("👥 منيو العميل — الرابط النهائي", menuUrl, "الدومين المعتمد الوحيد للفتح والنسخ والـQR");
+    try { w.LuxuryQR.render($("qr"), menuUrl, "QR الرابط النهائي لمنيو محصول فاخر"); }
+    catch (_) { $("qr").innerHTML = '<div class="note">تعذّر إنشاء كود QR. حدّث الصفحة وحاول مرة ثانية.</div>'; }
 
     $("settings").innerHTML =
       setRow("استقبال الطلبات", "مباشر داخل لوحة الإدارة") +

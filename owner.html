@@ -6,8 +6,10 @@
 <meta name="robots" content="noindex,nofollow">
 <title>لوحة التحكّم — محصول فاخر</title>
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://api.qrserver.com https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
 <meta name="theme-color" content="#F2ECDC" id="metaTheme">
+<link rel="canonical" href="https://luxury-crop-system.pages.dev/owner">
+<script src="assets/canonical.js?v=20260924-final-url"></script>
 <link rel="icon" href="assets/logo.png">
 <link rel="stylesheet" href="assets/fonts.css?v=20260920-qa">
 <link rel="stylesheet" href="assets/core.css?v=20260920-qa">
@@ -16,16 +18,19 @@
 <body class="auth-pending">
 
 <section id="adminGate" class="admin-gate" aria-labelledby="loginTitle">
-  <form id="adminLogin" class="login-card">
+  <form id="adminLogin" class="login-card" novalidate>
     <img src="assets/logo.png" alt="محصول فاخر">
     <h1 id="loginTitle">دخول الإدارة</h1>
     <p id="loginHelp">ادخل بالحساب المصرّح له لإدارة الطلبات والمنيو.</p>
-    <label>البريد الإلكتروني<input id="adminEmail" type="email" autocomplete="username" required></label>
-    <label>كلمة المرور<input id="adminPassword" type="password" autocomplete="current-password" minlength="8" required></label>
+    <label>البريد الإلكتروني<input id="adminEmail" type="email" inputmode="email" autocomplete="username" maxlength="180" required></label>
+    <label>كلمة المرور<input id="adminPassword" type="password" autocomplete="current-password" maxlength="128" required></label>
+    <label class="login-trap" aria-hidden="true">موقعك<input id="adminWebsite" type="text" tabindex="-1" autocomplete="off"></label>
     <button class="btn btn-p" type="submit" id="loginBtn">دخول آمن</button>
+    <div id="loginSecurity" class="login-security" role="status" aria-live="polite">مسموح بـ5 محاولات فقط خلال 15 دقيقة.</div>
     <div id="inviteSetup" hidden>
-      <label>كلمة المرور الجديدة<input id="invitePassword" type="password" autocomplete="new-password" minlength="10"></label>
-      <label>تأكيد كلمة المرور<input id="invitePasswordConfirm" type="password" autocomplete="new-password" minlength="10"></label>
+      <p class="password-rule">12 حرفًا على الأقل، وتتضمن حروفًا كبيرة وصغيرة ورقمًا ورمزًا.</p>
+      <label>كلمة المرور الجديدة<input id="invitePassword" type="password" autocomplete="new-password" minlength="12" maxlength="128"></label>
+      <label>تأكيد كلمة المرور<input id="invitePasswordConfirm" type="password" autocomplete="new-password" minlength="12" maxlength="128"></label>
       <button class="btn btn-p" type="button" id="invitePasswordBtn">حفظ وفتح لوحة الإدارة</button>
     </div>
     <div id="loginError" class="login-error" role="alert" aria-live="polite"></div>
@@ -351,13 +356,13 @@
   <div class="pane" id="p-links">
     <div class="grid g2" style="margin-bottom:16px">
       <div class="card">
-        <h2>🔗 روابطك</h2>
-        <div class="sub">لينك للعميل على الطاولة، ولينك ثاني لك انت بس</div>
+        <h2>🔗 الرابط النهائي</h2>
+        <div class="sub">ده الرابط الوحيد المعتمد للمنيو والنسخ والـQR.</div>
         <div class="rows" id="links"></div>
       </div>
       <div class="card">
-        <h3>📱 QR عام للمنيو</h3>
-        <div class="sub">للتصفح فقط من غير تحديد طاولة أو فندق.</div>
+        <h3>📱 QR الرابط النهائي</h3>
+        <div class="sub">بيتولّد داخل الموقع مباشرة، من غير خدمات أو روابط خارجية.</div>
         <div id="qr" style="display:grid;place-items:center;padding:14px"></div>
         <div class="note">لطلبات الطاولات والفندق استخدم الأكواد الآمنة من قسم «نقاط الخدمة والـQR».</div>
       </div>
@@ -388,12 +393,20 @@
 <dialog id="passwordDialog" class="editor-dialog">
   <form id="passwordForm">
     <div class="dialog-head"><h2>تعيين كلمة مرور الإدارة</h2><button type="button" id="passwordClose" aria-label="إغلاق">×</button></div>
-    <p class="sub">استخدم 10 أحرف على الأقل. كلمة المرور تُرسل مباشرة إلى Supabase ولا تُحفظ داخل الموقع.</p>
-    <label class="edit-field">كلمة المرور الجديدة<input id="newAdminPassword" type="password" autocomplete="new-password" minlength="10" required></label>
-    <label class="edit-field">تأكيد كلمة المرور<input id="confirmAdminPassword" type="password" autocomplete="new-password" minlength="10" required></label>
+    <p class="sub">استخدم 12 حرفًا على الأقل مع حروف كبيرة وصغيرة ورقم ورمز. كلمة المرور تُرسل مباشرة إلى Supabase ولا تُحفظ داخل الموقع.</p>
+    <label class="edit-field">كلمة المرور الجديدة<input id="newAdminPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>
+    <label class="edit-field">تأكيد كلمة المرور<input id="confirmAdminPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>
     <div id="passwordError" class="login-error" role="alert" aria-live="polite"></div>
     <div class="dialog-actions"><button class="btn btn-g" type="button" id="passwordCancel">إلغاء</button><button class="btn btn-p" type="submit" id="passwordSave">حفظ كلمة المرور</button></div>
   </form>
+</dialog>
+
+<dialog id="qrDialog" class="editor-dialog qr-dialog">
+  <div class="qr-dialog-body">
+    <div class="dialog-head"><h2 id="qrDialogTitle">QR الرابط النهائي</h2><button type="button" id="qrClose" aria-label="إغلاق">×</button></div>
+    <div id="qrDialogCode" class="qr-dialog-code"></div>
+    <div class="dialog-actions"><button class="btn btn-g" type="button" id="qrCopy">نسخ الرابط النهائي</button><button class="btn btn-p" type="button" id="qrDone">تم</button></div>
+  </div>
 </dialog>
 
 <dialog id="rangePinDialog" class="editor-dialog pin-dialog">
@@ -410,11 +423,13 @@
 
 <script defer src="data/menu.js?v=20260923-visual-order"></script>
 <script defer src="data/sales.js?v=20260921-combo-images"></script>
-<script defer src="data/backend-config.js?v=20260921-orders"></script>
+<script defer src="data/backend-config.js?v=20260924-final-url"></script>
 <script defer src="assets/vendor/supabase-2.116.0.js?v=2.116.0"></script>
+<script defer src="assets/vendor/qrcode-generator-1.4.4.js?v=1.4.4"></script>
+<script defer src="assets/qr.js?v=20260924-final-url"></script>
 <script defer src="assets/backend.js?v=20260923-visual-order"></script>
 <script defer src="assets/sys.js?v=20260921-approved-menu"></script>
-<script defer src="assets/owner.js?v=20260922-smart-qr"></script>
-<script defer src="assets/owner-live.js?v=20260923-visual-order"></script>
+<script defer src="assets/owner.js?v=20260924-final-url"></script>
+<script defer src="assets/owner-live.js?v=20260924-login-guard"></script>
 </body>
 </html>

@@ -180,7 +180,10 @@
     var c = init();
     if (!c) throw new Error("أكمل إعداد قاعدة البيانات أولًا");
     var value = String(password || "");
-    if (value.length < 10) throw new Error("كلمة المرور لازم تكون 10 أحرف على الأقل");
+    if (value.length < 12) throw new Error("كلمة المرور لازم تكون 12 حرفًا على الأقل");
+    if (![ /[a-z]/.test(value), /[A-Z]/.test(value), /\d/.test(value), /[^A-Za-z0-9]/.test(value) ].every(Boolean)) {
+      throw new Error("كلمة المرور لازم تشمل حروفًا كبيرة وصغيرة ورقمًا ورمزًا");
+    }
     var out = await c.auth.updateUser({ password: value });
     if (out.error) throw out.error;
     return out.data.user;

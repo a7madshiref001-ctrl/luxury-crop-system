@@ -5,8 +5,10 @@
 (function (w, d) {
   "use strict";
 
-  var M = w.MENU, S = w.SALES, F = w.NS;
-  var CUR = M.brand.currency || "ر.س";
+  var M = w.MENU, S = w.SALES, F = w.NS, L = w.LC_I18N;
+  var tr = function (value) { return L ? L.t(value) : value; };
+  var localName = function (value) { return L ? L.name(value) : value; };
+  var CUR = L ? L.currency() : (M.brand.currency || "ر.س");
   var $ = function (s) { return d.querySelector(s); };
   var $$ = function (s) { return [].slice.call(d.querySelectorAll(s)); };
   var esc = function (s) { return F.esc(s); };
@@ -69,7 +71,7 @@
     stamp: ic('<path d="M6 20h12"/><path d="M8 17.4h8V15a4 4 0 0 0-1.4-3c-.8-.7-1-1.5-.6-2.5.5-1.3-.4-2.6-2-2.6s-2.5 1.3-2 2.6c.4 1 .2 1.8-.6 2.5A4 4 0 0 0 8 15z"/>'),
     empty: ic('<path d="M4.5 8.5h15l-1.4 11.2a2 2 0 0 1-2 1.8H7.9a2 2 0 0 1-2-1.8z"/><path d="M9 8.5V6.4a3 3 0 0 1 6 0v2.1"/>')
   };
-  var SAR = '<span class="sar" role="img" aria-label="ريال سعودي"></span>';
+  var SAR = L ? L.sar() : '<span class="sar" role="img" aria-label="ريال سعودي"></span>';
   var price = function (v, cls) { return '<div class="price' + (cls ? " " + cls : "") + '"><span class="num">' + v + '</span>' + SAR + '</div>'; };
 
   /* ================= صور ================= */
@@ -90,6 +92,75 @@
   }
   function keyOf(name) { var r = F.byName(name); return r ? r.raw.k : ""; }
 
+  function isEnglish() { return !!(L && L.isEn); }
+  function localizedProduct(name) { return localName(name); }
+  function localizedDesc(value) { return tr(value || ""); }
+  function setText(selector, value) { var el = $(selector); if (el) el.textContent = value; }
+  function setAttr(selector, name, value) { var el = $(selector); if (el) el.setAttribute(name, value); }
+
+  function applyStaticLanguage() {
+    var english = isEnglish();
+    d.documentElement.lang = english ? "en" : "ar";
+    d.documentElement.dir = english ? "ltr" : "rtl";
+    d.title = english ? "Luxury Crop — Specialty Coffee" : "محصول فاخر — قهوة مختصة";
+    var description = english
+      ? "Luxury Crop specialty coffee menu. Order directly from your table."
+      : "منيو محصول فاخر — قهوة مختصة. اطلب من طاولتك.";
+    setAttr('meta[name="description"]', "content", description);
+    setAttr('meta[property="og:title"]', "content", d.title);
+    setAttr('meta[property="og:description"]', "content", description);
+    setText(".skip-link", english ? "Skip to menu" : "انتقل إلى المنيو");
+    setText(".sp-tag", tr("قهوة مختصة"));
+    setText(".sp-hint", tr("المس الشاشة للدخول"));
+    setText(".hero-tagline", tr("قهوة مختصة"));
+    setAttr(".hero-photo img", "alt", english ? "Coffee beans roasting at Luxury Crop" : "تحميص حبوب القهوة في محمصة محصول فاخر");
+    setText(".cue span", tr("المنيو"));
+    setText("#heroOrderText", servicePoint
+      ? (english ? "Order to " + servicePoint.label : "اطلب إلى " + servicePoint.label)
+      : tr("اطلب من الطاولة"));
+    setAttr("#searchBtn", "aria-label", tr("بحث"));
+    setAttr("#searchClose", "aria-label", tr("إغلاق البحث"));
+    setAttr("#q", "placeholder", tr("دوّر على صنف…"));
+    setText("#combos .rail-head p", tr("اختيارات خاصة بسعر أفضل"));
+    setText("footer .ft", tr("قهوة مختصة"));
+    setText("footer small", tr("صُنع بحب لعشّاق القهوة المختصة"));
+    setAttr("#toTop", "aria-label", tr("العودة لأعلى"));
+    setText(".bar-l", tr("شوف طلبك"));
+    $$(".sar").forEach(function (el) { el.setAttribute("aria-label", tr("ريال سعودي")); });
+    $$(".sheet-close").forEach(function (el) { el.setAttribute("aria-label", tr("إغلاق")); });
+    var toggle = $("#langToggle");
+    if (toggle) {
+      toggle.querySelector("span").textContent = english ? "ع" : "EN";
+      toggle.setAttribute("aria-label", english ? "التبديل إلى العربية" : "Switch to English");
+      toggle.title = english ? "العربية" : "English";
+    }
+  }
+
+  function changeLanguage() {
+    if (!L) return;
+    L.toggle();
+    CUR = L.currency();
+    SAR = L.sar();
+    applyStaticLanguage();
+    renderPills();
+    renderMenu();
+    renderFeatured();
+    renderCombos();
+    renderOffer();
+    renderFooter();
+    syncBar();
+    if ($("#shItem").classList.contains("on") && sel) $("#itemBody").innerHTML = itemSheet();
+    if ($("#shCart").classList.contains("on")) $("#cartBody").innerHTML = cartSheet();
+    if ($("#shRev").classList.contains("on")) closeSheet("shRev");
+    var q = $("#q");
+    if (q && q.value) {
+      q.value = "";
+      runSearch("");
+      closeSearch();
+    }
+    requestAnimationFrame(function () { curPill = ""; setActive("sec-" + M.sections[0].id); });
+  }
+
   /* ================= تهيئة ================= */
   function init() {
     /* المنيو بيفهرس الأصناف بس — بيانات العرض بتتولّد في اللوحة،
@@ -98,6 +169,7 @@
     theme();
     offer = F.offerLive();
 
+    applyStaticLanguage();
     renderPills();
     renderMenu();
     renderFeatured();
@@ -105,7 +177,7 @@
     renderOffer();
     renderFooter();
     restoreCart();
-    if (servicePoint && $("#heroOrderText")) $("#heroOrderText").textContent = "اطلب إلى " + servicePoint.label;
+    if (servicePoint && $("#heroOrderText")) $("#heroOrderText").textContent = isEnglish() ? "Order to " + servicePoint.label : "اطلب إلى " + servicePoint.label;
 
     F.track("visit", { ref: d.referrer || "" });
     splash(); beans(); scrollFx(); wire();
@@ -180,8 +252,8 @@
     if (!el) return;
     if (!offer || !offer.active) { el.classList.add("hide"); return; }
     el.classList.remove("hide");
-    $("#offT").textContent = offer.title;
-    $("#offB").textContent = offer.body;
+    $("#offT").textContent = tr(offer.title);
+    $("#offB").textContent = tr(offer.body);
     tickOffer();
   }
   function tickOffer() {
@@ -199,9 +271,10 @@
   /* ================= الشريط ================= */
   function renderPills() {
     var box = $("#pills");
+    box.innerHTML = '<div class="glider" id="glider"></div>';
     M.sections.forEach(function (s) {
       var b = d.createElement("button");
-      b.className = "pill"; b.dataset.t = "sec-" + s.id; b.textContent = s.title;
+      b.className = "pill"; b.dataset.t = "sec-" + s.id; b.dir = "auto"; b.textContent = tr(s.title);
       b.onclick = function () { go(s.id); };
       box.appendChild(b);
     });
@@ -220,9 +293,9 @@
       var base = it.p != null ? it.p : (it.s || [0])[0];
       var p = discounted(r.sec, F.priceOf(n, base));
       return '<article class="fcard" style="--i:' + i + '" data-open="' + esc(n) + '">' +
-        photo(it.k, "ph", n, '<span class="rank">' + (i + 1) + '</span>') +
-        '<div class="bd"><b>' + esc(n) + '</b><div class="r">' + price(p, "sm") +
-        '<button class="plus" data-add="' + esc(n) + '" aria-label="أضف ' + esc(n) + '">' + IC.plus + '</button>' +
+        photo(it.k, "ph", localizedProduct(n), '<span class="rank">' + (i + 1) + '</span>') +
+        '<div class="bd"><b>' + esc(localizedProduct(n)) + '</b><div class="r">' + price(p, "sm") +
+        '<button class="plus" data-add="' + esc(n) + '" aria-label="' + esc((isEnglish() ? "Add " : "أضف ") + localizedProduct(n)) + '">' + IC.plus + '</button>' +
         '</div></div></article>';
     }).join("");
   }
@@ -232,15 +305,15 @@
     $("#comboRail").innerHTML = (S.combos || []).map(function (c, i) {
       var k = keyOf((c.parts || [])[0]);
       var media = c.img
-        ? '<div class="ph"><img loading="lazy" decoding="async" src="' + esc(c.img) + '" alt="' + esc(c.n) + '"></div>'
-        : photo(k, "ph", c.n);
+        ? '<div class="ph"><img loading="lazy" decoding="async" src="' + esc(c.img) + '" alt="' + esc(tr(c.n)) + '"></div>'
+        : photo(k, "ph", tr(c.n));
       return '<article class="ccard" style="--i:' + i + '">' +
-        '<span class="save">وفّر ' + (c.was - c.p) + ' ' + CUR + '</span>' +
+        '<span class="save">' + (isEnglish() ? "Save " : "وفّر ") + (c.was - c.p) + ' ' + CUR + '</span>' +
         media +
-        '<div class="bd"><b>' + esc(c.n) + '</b><p>' + esc(c.d) + '</p><div class="r">' +
+        '<div class="bd"><b>' + esc(tr(c.n)) + '</b><p>' + esc(tr(c.d)) + '</p><div class="r">' +
         '<div><div class="price sm"><span class="num">' + c.p + '</span>' + SAR +
         '<span class="was">' + c.was + '</span></div></div>' +
-        '<button class="btn-mini" data-combo="' + c.id + '">' + IC.plus + ' أضفه</button>' +
+        '<button class="btn-mini" data-combo="' + c.id + '">' + IC.plus + ' ' + (isEnglish() ? "Add" : "أضفه") + '</button>' +
         '</div></div></article>';
     }).join("");
   }
@@ -251,14 +324,14 @@
     $("#menu").innerHTML = M.sections.map(function (s) {
       var cats = (s.cats || []).map(function (cat) {
         var head = (s.cats.length > 1 || cat.isNew)
-          ? '<div class="cat-h">' + esc(cat.title) + (cat.isNew ? ' <span class="tag new">جديد</span>' : "") + '</div>' : "";
+          ? '<div class="cat-h" dir="auto">' + esc(tr(cat.title)) + (cat.isNew ? ' <span class="tag new">' + tr("جديد") + '</span>' : "") + '</div>' : "";
         return head + '<div class="grid">' +
           (cat.items || []).map(function (it, i) { return card(it, s, c, i); }).join("") + '</div>';
       }).join("");
       return '<section class="sec" id="sec-' + s.id + '">' +
         '<div class="sec-head"><div class="sec-icon">' + (I[s.icon] || I.hot) + '</div>' +
-        '<div><h2 class="sec-title">' + esc(s.title) + '</h2>' +
-        '<div class="sec-sub">' + esc(s.desc || "") + '</div></div></div>' +
+        '<div><h2 class="sec-title" dir="auto">' + esc(tr(s.title)) + '</h2>' +
+        '<div class="sec-sub">' + esc(tr(s.desc || (isEnglish() && s.id === "cold-v60" ? "Specialty pour-over coffee — iced" : ""))) + '</div></div></div>' +
         '<div class="orn"></div>' + cats + '</section>';
     }).join("");
     observeAll();
@@ -269,30 +342,30 @@
     var base = it.p != null ? it.p : (it.s || [0])[0];
     var raw = F.priceOf(it.n, base), p = discounted(s.id, raw);
     var tags = "";
-    if (out) tags += '<span class="tag out">خلص</span>';
+    if (out) tags += '<span class="tag out">' + tr("خلص") + '</span>';
     else {
-      if (it.sig) tags += '<span class="tag sig">توقيع محصول فاخر</span>';
-      if (S.badges.hot.indexOf(it.n) > -1) tags += '<span class="tag hot">الأكثر طلبًا</span>';
-      else if (S.badges.chef.indexOf(it.n) > -1) tags += '<span class="tag chef">اختيار الباريستا</span>';
+      if (it.sig) tags += '<span class="tag sig">' + tr("توقيع محصول فاخر") + '</span>';
+      if (S.badges.hot.indexOf(it.n) > -1) tags += '<span class="tag hot">' + tr("الأكثر طلبًا") + '</span>';
+      else if (S.badges.chef.indexOf(it.n) > -1) tags += '<span class="tag chef">' + tr("اختيار الباريستا") + '</span>';
     }
     var pz = p !== raw
       ? '<div class="price sm"><s>' + raw + '</s><span class="num">' + p + '</span>' + SAR + '</div>'
       : price(p);
     return '<article class="card' + (out ? " out" : "") + '" style="--i:' + (i % 6) + '" data-open="' + esc(it.n) + '">' +
-      photo(it.k, "thumb", it.n) +
-      '<div class="txt"><h3>' + esc(it.n) + tags + '</h3>' +
-      (it.d ? '<p>' + esc(it.d) + '</p>' : "") + '</div>' +
-      '<div class="side">' + pz + (it.s ? '<span class="from">يبدأ من</span>' : "") +
-      (out ? "" : '<button class="add" data-add="' + esc(it.n) + '" aria-label="أضف ' + esc(it.n) + '">' + IC.plus + '</button>') +
+      photo(it.k, "thumb", localizedProduct(it.n)) +
+      '<div class="txt"><h3 dir="auto">' + esc(localizedProduct(it.n)) + tags + '</h3>' +
+      (it.d ? '<p>' + esc(localizedDesc(it.d)) + '</p>' : "") + '</div>' +
+      '<div class="side">' + pz + (it.s ? '<span class="from">' + tr("يبدأ من") + '</span>' : "") +
+      (out ? "" : '<button class="add" data-add="' + esc(it.n) + '" aria-label="' + esc((isEnglish() ? "Add " : "أضف ") + localizedProduct(it.n)) + '">' + IC.plus + '</button>') +
       '</div></article>';
   }
 
   /* ================= الفوتر ================= */
   function renderFooter() {
     var b = M.brand, h = "";
-    if (b.phone) h += '<a href="tel:' + b.phone + '">' + IC.phone + ' اتصل فينا</a>';
-    if (b.maps) h += '<a href="' + b.maps + '" target="_blank" rel="noopener noreferrer">' + IC.pin + ' الموقع</a>';
-    if (b.instagram) h += '<a href="' + b.instagram + '" target="_blank" rel="noopener noreferrer">' + IC.ig + ' luxurycrop1</a>';
+    if (b.phone) h += '<span>' + IC.phone + ' ' + esc(b.phone) + '</span>';
+    if (b.address) h += '<span>' + IC.pin + ' ' + esc(b.address) + '</span>';
+    if (b.instagram) h += '<span>' + IC.ig + ' ' + esc(String(b.instagram).replace(/^@/, "")) + '</span>';
     $("#fLinks").innerHTML = h;
   }
 
@@ -411,15 +484,19 @@
     menu.classList.add("hide"); if (feat) feat.classList.add("hide"); if (comb) comb.classList.add("hide"); if (off) off.classList.add("hide");
     res.classList.remove("hide");
     var c = F.control();
+    var needle = v.toLocaleLowerCase(isEnglish() ? "en" : "ar");
     var hits = F.items().filter(function (r) {
-      return r.n.indexOf(v) > -1 || (r.raw.d || "").indexOf(v) > -1 || r.secTitle.indexOf(v) > -1;
+      var haystack = [r.n, r.raw.d || "", r.secTitle, localizedProduct(r.n), localizedDesc(r.raw.d), tr(r.secTitle)]
+        .join(" ").toLocaleLowerCase(isEnglish() ? "en" : "ar");
+      return haystack.indexOf(needle) > -1;
     });
     res.innerHTML = '<section class="sec seen"><div class="sec-head">' +
-      '<div class="sec-icon">' + I.v60 + '</div><div><h2 class="sec-title">' + hits.length + ' نتيجة</h2>' +
-      '<div class="sec-sub">بحث عن «' + esc(v) + '»</div></div></div><div class="orn"></div>' +
+      '<div class="sec-icon">' + I.v60 + '</div><div><h2 class="sec-title">' +
+      (isEnglish() ? hits.length + (hits.length === 1 ? " result" : " results") : hits.length + " نتيجة") + '</h2>' +
+      '<div class="sec-sub">' + (isEnglish() ? "Search for “" : "بحث عن «") + esc(v) + (isEnglish() ? "”" : "»") + '</div></div></div><div class="orn"></div>' +
       (hits.length
         ? '<div class="grid">' + hits.map(function (r, i) { return card(r.raw, F.section(r.sec), c, i); }).join("") + '</div>'
-        : '<div class="empty">' + IC.empty + '<p>ما لقينا شي بهذا الاسم</p></div>') +
+        : '<div class="empty">' + IC.empty + '<p>' + (isEnglish() ? "No menu items match your search" : "ما لقينا شي بهذا الاسم") + '</p></div>') +
       '</section>';
     $$("#qres .card").forEach(function (e) { e.classList.add("in"); });
     if (v.length > 2) F.track("search", { q: v, hits: hits.length });
@@ -429,7 +506,7 @@
   function openItem(name) {
     var r = F.byName(name); if (!r) return;
     var c = F.control();
-    if (r.raw._remoteSoldOut || c.soldOut.indexOf(name) > -1) { toast("الصنف هذا خلص حاليًا"); return; }
+    if (r.raw._remoteSoldOut || c.soldOut.indexOf(name) > -1) { toast(isEnglish() ? "This item is currently sold out" : "الصنف هذا خلص حاليًا"); return; }
     var s = F.section(r.sec);
     sel = { rec: r, sec: s, size: 0, qty: 1, addons: [], note: "", sug: null };
     F.track("item_view", { n: name, sec: r.sec, p: r.price });
@@ -452,41 +529,41 @@
     var unit = discounted(r.sec, F.priceOf(it.n, base));
     var h = "";
 
-    h += photo(it.k, "sh-photo", it.n);
-    h += '<div class="sh-top"><div><h3>' + esc(it.n) + '</h3>' +
-      '<div class="dsc">' + esc(it.d || s.desc || "") + '</div></div>' + price(unit) + '</div>';
+    h += photo(it.k, "sh-photo", localizedProduct(it.n));
+    h += '<div class="sh-top"><div><h3>' + esc(localizedProduct(it.n)) + '</h3>' +
+      '<div class="dsc">' + esc(localizedDesc(it.d || s.desc || "")) + '</div></div>' + price(unit) + '</div>';
 
     if (it.s) {
-      h += '<div class="sh-sec"><div class="lb">' + IC.cart + 'الحجم</div><div class="seg">' +
+      h += '<div class="sh-sec"><div class="lb">' + IC.cart + tr("الحجم") + '</div><div class="seg">' +
         it.s.map(function (p, i) {
           if (p == null) return "";
           return '<button data-size="' + i + '" class="' + (i === sel.size ? "on" : "") + '">' +
-            esc(sizes[i] || ("حجم " + (i + 1))) + '<small>' + discounted(r.sec, F.priceOf(it.n, p)) + ' ' + CUR + '</small></button>';
+            esc(tr(sizes[i]) || ((isEnglish() ? "Size " : "حجم ") + (i + 1))) + '<small>' + discounted(r.sec, F.priceOf(it.n, p)) + ' ' + CUR + '</small></button>';
         }).join("") + '</div></div>';
     }
 
-    h += '<div class="sh-sec"><div class="lb">' + IC.plus + 'زده بإضافة</div><div class="adds">' +
+    h += '<div class="sh-sec"><div class="lb">' + IC.plus + tr("زده بإضافة") + '</div><div class="adds">' +
       addons.map(function (a, i) {
         var on = sel.addons.indexOf(i) > -1;
         return '<div class="ad' + (on ? " on" : "") + '" data-addon="' + i + '">' +
-          '<div class="bx">' + IC.check + '</div><div class="nm">' + esc(a.n) + '</div>' +
+          '<div class="bx">' + IC.check + '</div><div class="nm">' + esc(tr(a.n)) + '</div>' +
           '<div class="pp">+' + a.p + ' ' + CUR + '</div></div>';
       }).join("") + '</div></div>';
 
-    h += '<div class="sh-sec"><div class="lb">' + IC.note + 'ملاحظة للباريستا</div>' +
-      '<input class="fld" id="nt" maxlength="120" placeholder="مثلاً: بدون سكر" value="' + esc(sel.note) + '"></div>';
+    h += '<div class="sh-sec"><div class="lb">' + IC.note + tr("ملاحظة للباريستا") + '</div>' +
+      '<input class="fld" id="nt" maxlength="120" placeholder="' + tr("مثلاً: بدون سكر") + '" value="' + esc(sel.note) + '"></div>';
 
-    h += '<div class="sh-sec"><div class="lb">' + IC.bag + 'الكمية</div><div class="qty">' +
+    h += '<div class="sh-sec"><div class="lb">' + IC.bag + tr("الكمية") + '</div><div class="qty">' +
       '<button data-q="-1">' + IC.minus + '</button><b>' + sel.qty + '</b><button data-q="1">' + IC.plus + '</button></div></div>';
 
     if (sel.sug) {
-      h += '<div class="sug"><div class="t">' + IC.spark + 'الناس تاخذه مع</div><div class="row">' +
-        photo(sel.sug.raw.k, "thumb", sel.sug.n) +
-        '<div style="flex:1"><b>' + esc(sel.sug.n) + '</b><span>' + esc(sel.sug.raw.d || "") + '</span></div>' +
+      h += '<div class="sug"><div class="t">' + IC.spark + tr("الناس تاخذه مع") + '</div><div class="row">' +
+        photo(sel.sug.raw.k, "thumb", localizedProduct(sel.sug.n)) +
+        '<div style="flex:1"><b>' + esc(localizedProduct(sel.sug.n)) + '</b><span>' + esc(localizedDesc(sel.sug.raw.d || "")) + '</span></div>' +
         '<button class="btn-mini" data-sug="1">' + IC.plus + ' ' + sel.sug.price + ' ' + CUR + '</button></div></div>';
     }
 
-    h += '<div class="cta-wrap"><button class="btn-main" data-act="add">أضف للطلب' +
+    h += '<div class="cta-wrap"><button class="btn-main" data-act="add">' + tr("أضف للطلب") +
       '<span style="opacity:.55">·</span>' + lineTotal() + SAR + '</button></div>';
     return h;
   }
@@ -513,13 +590,13 @@
   function quickAdd(name, el) {
     var r = F.byName(name); if (!r) return;
     var c = F.control();
-    if (r.raw._remoteSoldOut || c.soldOut.indexOf(name) > -1) { toast("الصنف هذا خلص حاليًا"); return; }
+    if (r.raw._remoteSoldOut || c.soldOut.indexOf(name) > -1) { toast(isEnglish() ? "This item is currently sold out" : "الصنف هذا خلص حاليًا"); return; }
     if (r.raw.s) { openItem(name); return; }               // فيه أحجام → افتح الشيت
     var p = discounted(r.sec, F.priceOf(name, r.raw.p));
     push({ kind: "product", id: r.raw.k, n: name, k: r.raw.k, p: p, q: 1, sec: r.sec }, el);
     F.track("add_cart", { n: name, sec: r.sec, p: p });
     if (el) { el.classList.add("done"); el.innerHTML = IC.check; setTimeout(function () { el.classList.remove("done"); el.innerHTML = IC.plus; }, 900); }
-    toast(name + " أُضيف لطلبك");
+    toast(isEnglish() ? localizedProduct(name) + " added to your order" : name + " أُضيف لطلبك");
   }
   function addFromSheet() {
     var r = sel.rec, it = r.raw, s = sel.sec;
@@ -536,13 +613,13 @@
     });
     saveCart(); syncBar(true);
     closeSheet("shItem");
-    toast("أُضيف لطلبك");
+    toast(isEnglish() ? "Added to your order" : "أُضيف لطلبك");
   }
   function takeSug() {
     if (!sel || !sel.sug) return;
     push({ kind: "product", id: sel.sug.raw.k, n: sel.sug.n, k: sel.sug.raw.k, p: sel.sug.price, q: 1, sec: sel.sug.sec, up: 1 });
     F.track("upsell_accept", { n: sel.sug.n, p: sel.sug.price });
-    sel.sug = null; refreshItem(); toast("تمام، أضفناه");
+    sel.sug = null; refreshItem(); toast(isEnglish() ? "Added" : "تمام، أضفناه");
   }
   function addCombo(id, el) {
     var c = (S.combos || []).filter(function (x) { return x.id === id; })[0];
@@ -550,7 +627,9 @@
     push({ kind: "offer", id: c.id, n: "كومبو " + c.n, k: keyOf((c.parts || [])[0]), p: c.p, q: 1, sec: "combo", combo: 1 }, el);
     F.track("add_cart", { n: "كومبو " + c.n, sec: "combo", p: c.p });
     F.track("combo_add", { n: c.n, p: c.p });
-    toast("أُضيف الكومبو — وفّرت " + (c.was - c.p) + " " + CUR);
+    toast(isEnglish()
+      ? "Combo added — you saved " + (c.was - c.p) + " " + CUR
+      : "أُضيف الكومبو — وفّرت " + (c.was - c.p) + " " + CUR);
   }
   function saveCart() { F.set(F.K.cart, cart); }
   function restoreCart() {
@@ -599,21 +678,21 @@
 
   /* ================= شيت الطلب ================= */
   function openCart() {
-    if (!cart.length) { toast("طلبك فاضي — اختر شي أول"); return; }
+    if (!cart.length) { toast(isEnglish() ? "Your order is empty — choose something first" : "طلبك فاضي — اختر شي أول"); return; }
     mode = null; fee = 0;
     $("#cartBody").innerHTML = cartSheet();
     openSheet("shCart");
     F.track("cart_open", { n: cart.length });
   }
   function cartSheet() {
-    var t = sub(), h = '<h3>طلبك</h3><div class="dsc">راجعه قبل ما ترسله</div>';
+    var t = sub(), h = '<h3>' + tr("طلبك") + '</h3><div class="dsc">' + tr("راجعه قبل ما ترسله") + '</div>';
 
     h += '<div class="sh-sec">' + cart.map(function (l, i) {
-      return '<div class="ln">' + photo(l.k, "thumb", l.n) +
-        '<div class="i"><b>' + esc(l.n) + '</b><span>' + l.q + ' × ' + l.p + ' ' + CUR +
+      return '<div class="ln">' + photo(l.k, "thumb", localizedProduct(l.n)) +
+        '<div class="i"><b>' + esc(localizedProduct(l.n)) + '</b><span>' + l.q + ' × ' + l.p + ' ' + CUR +
         (l.note ? ' · ' + esc(l.note) : "") + '</span></div>' +
         '<div class="p">' + F.money(l.p * l.q) + '</div>' +
-        '<button class="x" data-del="' + i + '" aria-label="حذف">' + IC.x + '</button></div>';
+        '<button class="x" data-del="' + i + '" aria-label="' + (isEnglish() ? "Remove" : "حذف") + '">' + IC.x + '</button></div>';
     }).join("") + '</div>';
 
     var miss = (S.badges.profit || []).filter(function (n) {
@@ -622,9 +701,9 @@
     if (miss.length) {
       var g = F.byName(miss[0]);
       if (g) {
-        h += '<div class="sug"><div class="t">' + IC.spark + 'آخر فرصة تضيف</div><div class="row">' +
-          photo(g.raw.k, "thumb", g.n) +
-          '<div style="flex:1"><b>' + esc(g.n) + '</b><span>' + esc(g.raw.d || "") + '</span></div>' +
+        h += '<div class="sug"><div class="t">' + IC.spark + tr("آخر فرصة تضيف") + '</div><div class="row">' +
+          photo(g.raw.k, "thumb", localizedProduct(g.n)) +
+          '<div style="flex:1"><b>' + esc(localizedProduct(g.n)) + '</b><span>' + esc(localizedDesc(g.raw.d || "")) + '</span></div>' +
           '<button class="btn-mini" data-last="' + esc(g.n) + '">' + IC.plus + ' ' + g.price + ' ' + CUR + '</button></div></div>';
         F.track("upsell_shown", { n: g.n, where: "cart" });
       }
@@ -632,44 +711,44 @@
 
     var ICM = [IC.table, IC.bag, IC.car];
     if (servicePoint) {
-      h += '<div class="sh-sec location-confirm"><div class="lb">' + IC.pin + 'مكان استلام الطلب</div><div class="location-value"><b>' + esc(servicePoint.label) + '</b><span>' + (servicePoint.kind === "hotel" ? "طلب الفندق" : "طلب الصالة") + ' · تم التعرّف تلقائيًا من الـQR</span></div></div>';
+      h += '<div class="sh-sec location-confirm"><div class="lb">' + IC.pin + tr("مكان استلام الطلب") + '</div><div class="location-value"><b>' + esc(servicePoint.label) + '</b><span>' + tr(servicePoint.kind === "hotel" ? "طلب الفندق" : "طلب الصالة") + ' · ' + tr("تم التعرّف تلقائيًا من الـQR") + '</span></div></div>';
     } else if (locationInvalid || S.order.smartLocationsRequired) {
-      h += '<div class="sh-sec location-error"><div class="lb">' + IC.pin + 'تعذّر تحديد مكانك</div><p>امسح كود الـQR الموجود على طاولتك أو في غرفتك، وبعدها افتح الطلب مرة ثانية.</p></div>';
+      h += '<div class="sh-sec location-error"><div class="lb">' + IC.pin + tr("تعذّر تحديد مكانك") + '</div><p>' + tr("امسح كود الـQR الموجود على طاولتك أو في غرفتك، وبعدها افتح الطلب مرة ثانية.") + '</p></div>';
     } else {
       if (S.order.modes.length > 1) {
-        h += '<div class="sh-sec"><div class="lb">' + IC.pin + 'الطلب وين؟</div><div class="seg" id="modes">' +
+        h += '<div class="sh-sec"><div class="lb">' + IC.pin + tr("الطلب وين؟") + '</div><div class="seg" id="modes">' +
           S.order.modes.map(function (m, i) {
-            return '<button data-mode="' + esc(m) + '" class="' + (i === 0 ? "on" : "") + '">' + (ICM[i] || "") + esc(m) + '</button>';
+            return '<button data-mode="' + esc(m) + '" class="' + (i === 0 ? "on" : "") + '">' + (ICM[i] || "") + esc(tr(m)) + '</button>';
           }).join("") + '</div></div>';
       }
-      h += '<div class="sh-sec" id="tblWrap"><div class="lb">' + IC.table + 'رقم الطاولة</div>' +
-        '<input class="fld" id="tbl" type="number" inputmode="numeric" min="1" max="' + S.order.tables + '" required placeholder="من 1 إلى ' + S.order.tables + '"></div>';
+      h += '<div class="sh-sec" id="tblWrap"><div class="lb">' + IC.table + tr("رقم الطاولة") + '</div>' +
+        '<input class="fld" id="tbl" type="number" inputmode="numeric" min="1" max="' + S.order.tables + '" required placeholder="' + (isEnglish() ? "1 to " : "من 1 إلى ") + S.order.tables + '"></div>';
     }
 
-    h += '<div class="sh-sec"><div class="lb">' + IC.phone + 'اسمك ورقمك</div>' +
-      '<input class="fld" id="cn" autocomplete="name" maxlength="60" placeholder="الاسم (اختياري)" style="margin-bottom:8px">' +
-      '<input class="fld" id="cp" type="tel" inputmode="tel" autocomplete="tel" maxlength="10" pattern="05[0-9]{8}" placeholder="05xxxxxxxx (اختياري)">' +
-      '<div class="note-l">بياناتك اختيارية وتُستخدم لتأكيد الطلب وخدمتك.</div></div>';
+    h += '<div class="sh-sec"><div class="lb">' + IC.phone + tr("اسمك ورقمك") + '</div>' +
+      '<input class="fld" id="cn" autocomplete="name" maxlength="60" placeholder="' + tr("الاسم (اختياري)") + '" style="margin-bottom:8px">' +
+      '<input class="fld" id="cp" type="tel" inputmode="tel" autocomplete="tel" maxlength="10" pattern="05[0-9]{8}" placeholder="05xxxxxxxx ' + (isEnglish() ? "(optional)" : "(اختياري)") + '">' +
+      '<div class="note-l">' + tr("بياناتك اختيارية وتُستخدم لتأكيد الطلب وخدمتك.") + '</div></div>';
 
     if (S.loyalty.on) {
       var L = F.get(F.K.loy, { n: 0 });
-      h += '<div class="sh-sec"><div class="lb">' + IC.stamp + 'كارت الولاء — ' + L.n + '/' + S.loyalty.goal + '</div><div class="stamps">' +
+      h += '<div class="sh-sec"><div class="lb">' + IC.stamp + tr("كارت الولاء") + ' — ' + L.n + '/' + S.loyalty.goal + '</div><div class="stamps">' +
         Array.apply(null, Array(S.loyalty.goal)).map(function (_, i) {
           return '<div class="st' + (i < L.n ? " on" : "") + '">' + (i < L.n ? IC.check : IC.cart) + '</div>';
-        }).join("") + '</div><div class="note-l">كمّل ' + S.loyalty.goal + ' طلبات وخذ ' + esc(S.loyalty.reward) + '</div></div>';
+        }).join("") + '</div><div class="note-l">' + (isEnglish() ? "Complete " + S.loyalty.goal + " orders and enjoy " : "كمّل " + S.loyalty.goal + " طلبات وخذ ") + esc(tr(S.loyalty.reward)) + '</div></div>';
     }
 
     h += '<div class="sh-sec">' +
-      '<div class="tot"><span>الأصناف</span><b>' + F.money(t) + SAR + '</b></div>' +
-      '<div class="tot hide" id="feeRow"><span>توصيل</span><b>' + S.order.deliveryFee + SAR + '</b></div>' +
-      '<div class="tot big"><span>الإجمالي</span><b id="grand">' + F.money(t) + SAR + '</b></div></div>';
+      '<div class="tot"><span>' + tr("الأصناف") + '</span><b>' + F.money(t) + SAR + '</b></div>' +
+      '<div class="tot hide" id="feeRow"><span>' + tr("توصيل") + '</span><b>' + S.order.deliveryFee + SAR + '</b></div>' +
+      '<div class="tot big"><span>' + tr("الإجمالي") + '</span><b id="grand">' + F.money(t) + SAR + '</b></div></div>';
 
     var ready = !!(w.Backend && w.Backend.configured() && S.order.open !== false && !locationInvalid && (!S.order.smartLocationsRequired || servicePoint));
     h += '<div class="cta-wrap"><button class="btn-main" data-act="send"' + (ready ? "" : " disabled") + '>' + IC.check +
-      (ready ? 'تأكيد وإرسال الطلب' : 'نظام الطلبات قيد التجهيز') + '</button>' +
+      (ready ? tr("تأكيد وإرسال الطلب") : tr("نظام الطلبات قيد التجهيز")) + '</button>' +
       '<div class="note-l" style="text-align:center">' + (ready
-        ? 'يوصل طلبك للإدارة مباشرة ويظهر رقم الطلب هنا'
-        : 'سيتم فتح الطلبات فور اكتمال الربط الآمن.') + '</div></div>';
+        ? tr("يوصل طلبك للإدارة مباشرة ويظهر رقم الطلب هنا")
+        : tr("سيتم فتح الطلبات فور اكتمال الربط الآمن.")) + '</div></div>';
     return h;
   }
   function setMode(btn) {
@@ -693,7 +772,7 @@
     F.track("upsell_accept", { n: g.n, p: g.price, where: "cart" });
     saveCart(); syncBar(true);
     $("#cartBody").innerHTML = cartSheet();
-    toast("أضفناه");
+    toast(isEnglish() ? "Added" : "أضفناه");
   }
 
   /* ================= إرسال ================= */
@@ -731,12 +810,14 @@
   function addonId(section, index) { return "addon_" + String(section).replace(/[^a-z0-9_-]/gi, "_").toLowerCase() + "_" + index; }
   function safeOrderError(err) {
     var msg = String(err && (err.message || err.details) || "");
-    if (msg.indexOf("rate_limited") > -1) return "طلبات كثيرة في وقت قصير — انتظر دقائق وجرب";
-    if (msg.indexOf("ordering_closed") > -1) return "استقبال الطلبات متوقف مؤقتًا";
-    if (msg.indexOf("item_unavailable") > -1) return "أحد الأصناف لم يعد متاحًا — حدّث الصفحة وجرب";
-    if (msg.indexOf("invalid_table") > -1) return "رقم الطاولة غير صحيح";
-    if (msg.indexOf("location_required") > -1 || msg.indexOf("invalid_location") > -1) return "امسح QR الطاولة أو الغرفة من جديد";
-    return navigator.onLine ? "تعذّر إرسال الطلب — جرّب مرة ثانية" : "لا يوجد اتصال بالإنترنت";
+    if (msg.indexOf("rate_limited") > -1) return isEnglish() ? "Too many requests — wait a few minutes and try again" : "طلبات كثيرة في وقت قصير — انتظر دقائق وجرب";
+    if (msg.indexOf("ordering_closed") > -1) return isEnglish() ? "Ordering is temporarily paused" : "استقبال الطلبات متوقف مؤقتًا";
+    if (msg.indexOf("item_unavailable") > -1) return isEnglish() ? "An item is no longer available — refresh and try again" : "أحد الأصناف لم يعد متاحًا — حدّث الصفحة وجرب";
+    if (msg.indexOf("invalid_table") > -1) return isEnglish() ? "Invalid table number" : "رقم الطاولة غير صحيح";
+    if (msg.indexOf("location_required") > -1 || msg.indexOf("invalid_location") > -1) return isEnglish() ? "Please scan the table or room QR code again" : "امسح QR الطاولة أو الغرفة من جديد";
+    return navigator.onLine
+      ? (isEnglish() ? "We couldn't send your order — please try again" : "تعذّر إرسال الطلب — جرّب مرة ثانية")
+      : (isEnglish() ? "No internet connection" : "لا يوجد اتصال بالإنترنت");
   }
   async function send(button) {
     primeReceiptAudio();
@@ -744,23 +825,23 @@
     var tbl = $("#tbl") ? $("#tbl").value : "";
     var nm = $("#cn") ? $("#cn").value.trim() : "";
     var ph = $("#cp") ? $("#cp").value.trim() : "";
-    if (!w.Backend || !w.Backend.configured()) { toast("نظام الطلبات قيد التجهيز"); return; }
-    if (!servicePoint && (locationInvalid || S.order.smartLocationsRequired)) { toast("امسح QR الطاولة أو الغرفة أولًا"); return; }
+    if (!w.Backend || !w.Backend.configured()) { toast(tr("نظام الطلبات قيد التجهيز")); return; }
+    if (!servicePoint && (locationInvalid || S.order.smartLocationsRequired)) { toast(isEnglish() ? "Scan the table or room QR code first" : "امسح QR الطاولة أو الغرفة أولًا"); return; }
     if (!servicePoint && m === "الطاولة") {
       var tableNo = Number(tbl);
       if (!Number.isInteger(tableNo) || tableNo < 1 || tableNo > S.order.tables) {
-        toast("اكتب رقم طاولة صحيح من 1 إلى " + S.order.tables); $("#tbl").focus(); return;
+        toast(isEnglish() ? "Enter a table number from 1 to " + S.order.tables : "اكتب رقم طاولة صحيح من 1 إلى " + S.order.tables); $("#tbl").focus(); return;
       }
       tbl = String(tableNo);
     }
     ph = ph.replace(/\s+/g, "");
-    if (ph && !/^05\d{8}$/.test(ph)) { toast("اكتب رقم جوال صحيح يبدأ بـ 05"); $("#cp").focus(); return; }
+    if (ph && !/^05\d{8}$/.test(ph)) { toast(isEnglish() ? "Enter a valid mobile number starting with 05" : "اكتب رقم جوال صحيح يبدأ بـ 05"); $("#cp").focus(); return; }
 
     var total = t + fee;
     var up = cart.filter(function (l) { return l.up; }).reduce(function (a, l) { return a + l.p * l.q; }, 0);
     var ad = cart.filter(function (l) { return l.addon; }).reduce(function (a, l) { return a + l.p * l.q; }, 0);
 
-    if (button) { button.disabled = true; button.setAttribute("aria-busy", "true"); button.textContent = "جاري إرسال الطلب…"; }
+    if (button) { button.disabled = true; button.setAttribute("aria-busy", "true"); button.textContent = isEnglish() ? "Sending your order…" : "جاري إرسال الطلب…"; }
     try {
       var result = await w.Backend.placeOrder({
         table_no: servicePoint ? null : Number(tbl), location_token: servicePoint ? locationToken : "", customer_name: nm, customer_phone: ph,
@@ -772,11 +853,13 @@
       if (S.loyalty.on) { var L = F.get(F.K.loy, { n: 0 }); L.n = (L.n + 1) % (S.loyalty.goal + 1); F.set(F.K.loy, L); }
       cart = []; saveCart(); syncBar(); closeSheet("shCart");
       playReceiptDrop();
-      toast("تم استلام طلبك #" + result.order_number + " — بيجيك بأسرع وقت");
+      toast(isEnglish()
+        ? "Order #" + result.order_number + " received — we'll have it ready soon"
+        : "تم استلام طلبك #" + result.order_number + " — بيجيك بأسرع وقت");
       setTimeout(openReview, 1300);
     } catch (err) {
       toast(safeOrderError(err));
-      if (button) { button.disabled = false; button.removeAttribute("aria-busy"); button.innerHTML = IC.check + "تأكيد وإرسال الطلب"; }
+      if (button) { button.disabled = false; button.removeAttribute("aria-busy"); button.innerHTML = IC.check + tr("تأكيد وإرسال الطلب"); }
     }
   }
 
@@ -784,7 +867,7 @@
   function openReview() {
     if (!S.review.on) return;
     stars = 0;
-    $("#revBody").innerHTML = '<h3>كيف كانت تجربتك؟</h3><div class="dsc">رأيك يوصل لصاحب المكان على طول</div>' +
+    $("#revBody").innerHTML = '<h3>' + tr("كيف كانت تجربتك؟") + '</h3><div class="dsc">' + tr("رأيك يوصل لصاحب المكان على طول") + '</div>' +
       '<div class="stars" id="stRow">' + [1, 2, 3, 4, 5].map(function (i) {
         return '<button data-star="' + i + '" aria-label="' + i + '">' + IC.star + '</button>';
       }).join("") + '</div><div id="revAfter"></div>';
@@ -795,16 +878,15 @@
     [].forEach.call($("#stRow").children, function (b, i) { b.classList.toggle("on", i < n); });
     if (navigator.vibrate) navigator.vibrate(6);
     $("#revAfter").innerHTML = n >= S.review.threshold
-      ? '<div style="text-align:center"><p class="dsc">تسلم! تحب تكتبها في قوقل؟ تفرق معنا وايد</p>' +
-        '<div class="cta-wrap"><button class="btn-main" data-act="google">اكتب تقييم في قوقل</button></div></div>'
-      : '<div><p class="dsc">آسفين — قل لنا وش صار ونصلحه</p>' +
-        '<input class="fld" id="rvNote" placeholder="اكتب المشكلة…" style="margin-top:10px">' +
-        '<div class="cta-wrap"><button class="btn-main" data-act="low">أرسلها للإدارة</button></div></div>';
+      ? '<div style="text-align:center"><p class="dsc">' + (isEnglish() ? "Thank you! Your feedback goes directly to management." : "تسلم! تقييمك يوصل للإدارة مباشرة.") + '</p>' +
+        '<div class="cta-wrap"><button class="btn-main" data-act="high">' + (isEnglish() ? "Send feedback" : "إرسال التقييم") + '</button></div></div>'
+      : '<div><p class="dsc">' + tr("آسفين — قل لنا وش صار ونصلحه") + '</p>' +
+        '<input class="fld" id="rvNote" placeholder="' + tr("اكتب المشكلة…") + '" style="margin-top:10px">' +
+        '<div class="cta-wrap"><button class="btn-main" data-act="low">' + tr("أرسلها للإدارة") + '</button></div></div>';
   }
-  function toGoogle() {
-    F.pushReview({ t: Date.now(), stars: stars, note: "", sent: "google" });
-    F.track("review", { stars: stars, sent: "google" });
-    openExternal(S.review.googleUrl);
+  function sendHigh() {
+    F.pushReview({ t: Date.now(), stars: stars, note: "", sent: "owner" });
+    F.track("review", { stars: stars, sent: "owner" });
     closeSheet("shRev"); coupon();
   }
   function sendLow() {
@@ -815,7 +897,7 @@
   }
   function coupon() {
     if (!S.coupon.on) return;
-    setTimeout(function () { toast(S.coupon.text + " — كوبون: CROP" + S.coupon.pct); }, 800);
+    setTimeout(function () { toast(tr(S.coupon.text) + (isEnglish() ? " — code: CROP" : " — كوبون: CROP") + S.coupon.pct); }, 800);
   }
 
   /* ================= الشيتات ================= */
@@ -834,10 +916,6 @@
     if (!$(".sheet.on")) d.body.classList.remove("sheet-open");
     if (lastFocus && lastFocus.focus) lastFocus.focus();
   }
-  function openExternal(url) {
-    var win = w.open(url, "_blank", "noopener,noreferrer");
-    if (win) win.opener = null;
-  }
   function toast(m) {
     var el = $("#toast"), t = $("#toastT");
     t.textContent = m; el.classList.add("on");
@@ -847,6 +925,8 @@
 
   /* ================= الأحداث ================= */
   function wire() {
+    $("#langToggle").onclick = changeLanguage;
+    $("#skipMenu").onclick = function () { $("#main").scrollIntoView(); $("#main").setAttribute("tabindex", "-1"); $("#main").focus({ preventScroll: true }); };
     $("#searchBtn").onclick = openSearch;
     $("#searchClose").onclick = closeSearch;
     $("#q").addEventListener("input", function (e) { runSearch(e.target.value); });
@@ -887,7 +967,7 @@
         var a = el.dataset.act;
         if (a === "add") addFromSheet();
         else if (a === "send") send(el);
-        else if (a === "google") toGoogle();
+        else if (a === "high") sendHigh();
         else if (a === "low") sendLow();
       }
     });

@@ -9,8 +9,8 @@ window.MENU = {
     "address": "الطائف",
     "hours": "",
     "phone": "",
-    "instagram": "https://instagram.com/luxurycrop1",
-    "maps": "https://maps.app.goo.gl/AF6MZdCkoQJ8n6vCA",
+    "instagram": "",
+    "maps": "",
     "currency": "ر.س",
     "theme": {
       "primary": "#A67C50",

@@ -7,9 +7,11 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const window = {};
 vm.runInNewContext(fs.readFileSync(path.join(root, "data/menu.js"), "utf8"), { window });
 vm.runInNewContext(fs.readFileSync(path.join(root, "data/sales.js"), "utf8"), { window });
+vm.runInNewContext(fs.readFileSync(path.join(root, "data/backend-config.js"), "utf8"), { window });
 
 const menu = window.MENU;
 const sales = window.SALES;
+const site = window.SITE_CONFIG;
 const failures = [];
 const warnings = [];
 const pass = (condition, message) => { if (!condition) failures.push(message); };
@@ -72,6 +74,8 @@ requiredClientIds.forEach(id => pass(new RegExp(`id=["']${id}["']`).test(indexHt
 
 const menuJs = fs.readFileSync(path.join(root, "assets/menu.js"), "utf8");
 const backendJs = fs.readFileSync(path.join(root, "assets/backend.js"), "utf8");
+const ownerJs = fs.readFileSync(path.join(root, "assets/owner.js"), "utf8");
+const ownerLiveJs = fs.readFileSync(path.join(root, "assets/owner-live.js"), "utf8");
 const configJs = fs.readFileSync(path.join(root, "data/backend-config.js"), "utf8");
 const migration = fs.readFileSync(path.join(root, "supabase/migrations/20260921030000_secure_ordering.sql"), "utf8");
 pass(!menuJs.includes("wa.me/") && !menuJs.includes("أرسل الطلب على واتساب"), "مسار طلب واتساب ما زال موجودًا");
@@ -82,6 +86,18 @@ pass(migration.includes("enable row level security"), "RLS غير مفعّل ف�
 pass(migration.includes("security definer") && migration.includes("set search_path = ''"), "دالة الطلب المحمية لا تثبّت search_path");
 pass(migration.includes("rate_limited") && migration.includes("idempotency_key"), "الحماية من التكرار أو الإغراق غير مكتملة");
 pass(migration.includes("revoke all on public.admin_users"), "صلاحيات الجداول لم تُسحب افتراضيًا");
+pass(site && site.menuUrl === "https://luxury-crop-system.pages.dev/", "رابط المنيو النهائي غير مضبوط في SITE_CONFIG");
+pass(site && site.adminUrl === "https://luxury-crop-system.pages.dev/owner", "رابط لوحة الإدارة النهائي غير مضبوط");
+pass(indexHtml.includes('rel="canonical" href="https://luxury-crop-system.pages.dev/"'), "الرابط canonical النهائي ناقص من المنيو");
+pass(!/<a\b/i.test(indexHtml), "يوجد رابط قابل للنقر في واجهة المنيو غير الرابط النهائي");
+const runtimeText = [indexHtml, fs.readFileSync(path.join(root, "owner.html"), "utf8"), menuJs, ownerJs, ownerLiveJs, fs.readFileSync(path.join(root, "data/menu.js"), "utf8"), fs.readFileSync(path.join(root, "data/sales.js"), "utf8")].join("\n");
+for (const forbidden of ["api.qrserver.com", "wa.me/", "instagram.com/", "maps.app.goo.gl/"]) {
+  pass(!runtimeText.includes(forbidden), `رابط خارجي غير معتمد ما زال موجودًا: ${forbidden}`);
+}
+pass(ownerJs.includes("LuxuryQR.finalMenuUrl") && ownerLiveJs.includes("LuxuryQR.finalMenuUrl"), "مولدات الروابط والـQR لا تستخدم الرابط النهائي الموحد");
+pass(fs.existsSync(path.join(root, "assets/vendor/qrcode-generator-1.4.4.js")) && fs.existsSync(path.join(root, "assets/qr.js")), "مولد QR المحلي ناقص");
+pass(ownerLiveJs.includes("maxFailedAttempts: 5") && ownerLiveJs.includes("LOGIN_GUARD_KEY"), "قفل محاولات دخول الإدارة غير مفعل");
+pass(ownerLiveJs.includes("value.length < 12") && backendJs.includes("value.length < 12"), "سياسة كلمة مرور الإدارة القوية غير مطبقة في الواجهة والخلفية");
 if (!/url:\s*"https:\/\//.test(configJs)) warnings.push("البرمجة جاهزة لكن بيانات ربط Supabase لم توضع بعد؛ الطلبات ستظل مغلقة بأمان.");
 
 console.log(`PASS: ${items.length} صنفًا، ${menu.sections.length} أقسام، ${atlasNumbers.size} ملفات أطلس و${(sales.combos || []).length} صور عروض.`);

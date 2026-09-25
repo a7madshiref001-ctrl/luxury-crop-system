@@ -8,3 +8,17 @@ window.BACKEND_CONFIG = {
   publishableKey: "sb_publishable_zN4rosy4qTS9Nbyx1iFxYw_Azx-lYnc",
   orderPollMs: 2500
 };
+
+/* المصدر الوحيد لكل الروابط العامة والـQR. لا تُولّد رابطًا من location.href. */
+window.SITE_CONFIG = Object.freeze({
+  menuUrl: "https://luxury-crop-system.pages.dev/",
+  adminUrl: "https://luxury-crop-system.pages.dev/owner",
+  canonicalHost: "luxury-crop-system.pages.dev"
+});
+
+/* قفل متصفح مساعد؛ الحماية الأساسية تظل في Supabase Auth وحدود الـIP. */
+window.ADMIN_SECURITY = Object.freeze({
+  maxFailedAttempts: 5,
+  attemptWindowMs: 15 * 60 * 1000,
+  lockoutMs: 15 * 60 * 1000
+});

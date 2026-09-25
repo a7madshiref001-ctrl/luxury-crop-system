@@ -38,6 +38,10 @@ node scripts/qa.mjs
 node scripts/backend-contract-test.mjs
 ```
 
-المنيو: https://a7madshiref001-ctrl.github.io/luxury-crop-system/
+المنيو النهائي: https://luxury-crop-system.pages.dev/
 
-لوحة الإدارة: https://a7madshiref001-ctrl.github.io/luxury-crop-system/owner.html
+لوحة الإدارة: https://luxury-crop-system.pages.dev/owner
+
+كل روابط النسخ وأكواد QR تُبنى من `SITE_CONFIG.menuUrl` فقط. أي استضافة قديمة تعيد التوجيه إلى الرابط النهائي، والـQR يُنشأ محليًا داخل لوحة الإدارة من دون خدمة خارجية.
+
+دخول الإدارة محمي بصلاحيات RLS، وحدود Supabase Auth حسب عنوان IP، وقفل إضافي في الواجهة بعد 5 محاولات فاشلة خلال 15 دقيقة. كلمات المرور الجديدة تتطلب 12 حرفًا على الأقل مع حروف كبيرة وصغيرة ورقم ورمز.

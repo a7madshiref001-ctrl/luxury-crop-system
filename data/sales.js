@@ -131,7 +131,7 @@ window.SALES = {
   /* ---- فلتر التقييمات ---- */
   review: {
     on: true,
-    googleUrl: "https://maps.app.goo.gl/AF6MZdCkoQJ8n6vCA",
+    googleUrl: "",
     ownerWhatsapp: "966500000000",
     threshold: 4
   },
