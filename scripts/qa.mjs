@@ -52,6 +52,8 @@ referenced.forEach(name => pass(names.has(name), `مرجع لصنف غير مو�
 pass(Array.isArray(sales.order.modes) && sales.order.modes.length === 1 && sales.order.modes[0] === "الطاولة",
   "الموقع يجب أن يقبل الطلب من الطاولة فقط");
 pass(Number.isInteger(sales.order.tables) && sales.order.tables > 0, "عدد الطاولات غير صالح");
+pass(sales.offer && sales.offer.on === false, "خصومات المنتجات المباشرة يجب أن تظل متوقفة");
+pass(Array.isArray(sales.combos) && sales.combos.length > 0, "قسم Luxury Crop offers يجب أن يظل فعالًا");
 
 const atlasNumbers = new Set(items.filter(item => Number.isInteger(item._imageIndex)).map(item => Math.floor(item._imageIndex / 6) + 1));
 for (const i of atlasNumbers) {

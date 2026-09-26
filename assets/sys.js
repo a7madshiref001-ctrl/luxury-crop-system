@@ -486,8 +486,10 @@
     });
   }
   function offerLive() {
-    var c = control(), s = w.SALES.offer;
-    var on = c.offerOn == null ? s.on : c.offerOn;
+      var c = control(), s = w.SALES.offer;
+      /* خصومات المنتجات المباشرة متوقفة؛ قسم الكومبوهات مستقل عنها. */
+      if (!s.on) return null;
+      var on = c.offerOn == null ? s.on : c.offerOn;
     if (!on) return null;
     var h = new Date().getHours();
     var active = s.from <= s.to ? (h >= s.from && h < s.to) : (h >= s.from || h < s.to);
