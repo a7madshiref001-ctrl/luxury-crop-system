@@ -16,7 +16,7 @@
 <link rel="icon" href="assets/logo.png">
 <link rel="preload" as="image" href="assets/img/hero-roaster-square.webp" type="image/webp" fetchpriority="high">
 <link rel="stylesheet" href="assets/fonts.css?v=20260924-menu-headings">
-<link rel="stylesheet" href="assets/menu.css?v=20260925-language-red">
+<link rel="stylesheet" href="assets/menu.css?v=20260926-language-hero">
 </head>
 <body class="lock">
 
@@ -57,6 +57,10 @@
       <svg viewBox="0 0 24 24" class="ic"><path d="M4 6h2.2l2.1 9.4a2 2 0 0 0 2 1.6h6.6a2 2 0 0 0 2-1.5L20.5 9H7"/><circle cx="10.5" cy="20" r="1.1"/><circle cx="17.5" cy="20" r="1.1"/></svg>
       <span id="heroOrderText">اطلب من الطاولة</span>
     </button>
+    <button class="lang-toggle" id="langToggle" type="button" aria-label="Switch to English" title="English">
+      <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.8 12h16.4M12 3.5c2.2 2.3 3.3 5.1 3.3 8.5S14.2 18.2 12 20.5M12 3.5C9.8 5.8 8.7 8.6 8.7 12s1.1 6.2 3.3 8.5"/></svg>
+      <span aria-hidden="true">EN</span>
+    </button>
   </div>
 
   <div class="cue an">
@@ -69,9 +73,6 @@
 <nav id="nav">
   <div class="nav-in">
     <div class="pills" id="pills"><div class="glider" id="glider"></div></div>
-    <button class="lang-toggle" id="langToggle" type="button" aria-label="Switch to English" title="English">
-      <span aria-hidden="true">EN</span>
-    </button>
     <button class="nav-ico" id="searchBtn" aria-label="بحث" aria-expanded="false" aria-controls="searchRow">
       <svg viewBox="0 0 24 24" class="ic"><circle cx="11" cy="11" r="6.6"/><path d="M15.8 15.8L21 21"/></svg>
     </button>
