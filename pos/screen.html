@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<script src="assets/canonical.js?v=5"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#F4F0E8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>محصول فاخر · طلبك جاهز</title>
+<link rel="icon" href="assets/brand/logo-mark.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/brand/logo-mark.png">
+
+<link rel="stylesheet" href="assets/darj.css?v=5">
+<link rel="stylesheet" href="assets/brand.css?v=5">
+<style>
+  body{min-height:100dvh;display:flex;flex-direction:column;background:var(--paper)}
+  .sc-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:22px clamp(16px,4vw,48px)}
+  .cafe{display:flex;align-items:baseline;gap:12px;direction:ltr}
+  .cafe b{font-family:var(--f-en);font-weight:800;font-size:clamp(26px,3.4vw,44px);letter-spacing:.08em}
+  .cafe span{font-family:var(--f);font-size:clamp(14px,1.6vw,20px);color:var(--muted)}
+  .sc-clock{font-family:var(--f-en);font-weight:700;font-size:clamp(20px,2.4vw,32px);direction:ltr}
+  .board{flex:1;display:grid;grid-template-columns:.85fr 1fr 1.3fr;gap:clamp(12px,2vw,28px);padding:0 clamp(16px,4vw,48px) 20px;min-height:0}
+  .col{border-radius:28px;padding:clamp(16px,2.4vw,32px);display:flex;flex-direction:column;min-height:0}
+  .col--prep{background:var(--card);border:1px solid var(--line)}
+  .col--queue{background:transparent;border:1.5px dashed var(--line)}
+  .col--queue .n{background:var(--card)}
+  .n i{font-style:normal;font-family:var(--f);font-size:clamp(10px,.9vw,12px);font-weight:700;color:var(--go-ink);background:var(--go-50);padding:1px 7px;border-radius:999px}
+  .sc-top .lnk{margin-inline-start:auto;margin-inline-end:14px}
+  .col--ready{background:var(--ink);color:#fff}
+  .col h2{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:18px}
+  .col h2 b{font-family:var(--f-en);font-weight:700;font-size:clamp(28px,3.6vw,52px);letter-spacing:-.03em;line-height:1}
+  .col h2 span{font-size:clamp(14px,1.5vw,20px);opacity:.6;font-weight:700}
+  .nums{display:flex;flex-wrap:wrap;gap:clamp(8px,1vw,14px);align-content:flex-start;direction:ltr}
+  .n{font-family:var(--f-en);font-weight:700;font-size:clamp(26px,3vw,44px);line-height:1;padding:clamp(10px,1.2vw,16px) clamp(14px,1.6vw,22px);border-radius:18px;background:var(--paper);display:grid;justify-items:center;gap:4px}
+  .n small{font-family:var(--f);font-size:clamp(11px,1vw,14px);font-weight:700;color:var(--muted)}
+  .col--ready .n{background:rgba(255,255,255,.08);font-size:clamp(40px,5.4vw,84px)}
+  .col--ready .n small{color:rgba(255,255,255,.65);font-size:clamp(13px,1.3vw,18px)}
+  .n.hot{background:#0E7A55;animation:hot 1.2s var(--ease) 3}
+  @keyframes hot{50%{transform:scale(1.07)}}
+  .sc-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 clamp(16px,4vw,48px) 18px;color:var(--muted);font-size:13px}
+  .sc-foot b{font-family:var(--f-en);letter-spacing:.06em;color:var(--ink-2)}
+  /* customer-facing cart */
+  .cf{flex:1;display:grid;grid-template-columns:1.3fr 1fr;gap:clamp(12px,2vw,28px);padding:0 clamp(16px,4vw,48px) 20px;min-height:0}
+  .cf__list{background:var(--card);border:1px solid var(--line);border-radius:28px;padding:clamp(16px,2.4vw,30px);overflow:auto}
+  .cf__l{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:baseline;padding:12px 0;border-bottom:1px dashed var(--line)}
+  .cf__l:last-child{border:0}
+  .cf__l .q{font-family:var(--f-en);font-weight:700;font-size:20px}
+  .cf__l b{font-size:clamp(16px,1.6vw,21px)}
+  .cf__l small{display:block;color:var(--muted);font-size:13px}
+  .cf__l .p{font-family:var(--f-en);font-weight:700;font-size:clamp(16px,1.6vw,21px)}
+  .cf__side{display:grid;gap:clamp(12px,1.6vw,20px);align-content:start}
+  .cf__tot{background:var(--ink);color:#fff;border-radius:28px;padding:clamp(18px,2.4vw,32px)}
+  .cf__tot .big{font-family:var(--f-en);font-weight:700;font-size:clamp(46px,6vw,92px);letter-spacing:-.04em;line-height:1;margin-top:8px}
+  .cf__tot .big .cur{color:rgba(255,255,255,.6)}
+  .cf__tot small{display:block;margin-top:8px;color:rgba(255,255,255,.65);font-size:14px}
+  .cf__card{background:var(--card);border:1px solid var(--line);border-radius:28px;padding:clamp(16px,2vw,26px);text-align:center}
+  .cf__msg{display:grid;place-items:center;align-content:center;text-align:center;gap:14px;flex:1;padding:24px}
+  .cf__msg h1{font-family:var(--f-en);font-weight:700;font-size:clamp(44px,7vw,110px);letter-spacing:-.04em;line-height:.95;direction:ltr}
+  .cf__msg p{font-size:clamp(16px,2vw,24px);color:var(--ink-2);max-width:30ch}
+  @media (max-width:1000px){.board{grid-template-columns:1fr 1fr}.col--ready{grid-column:1/-1;order:-1}}
+  @media (max-width:760px){.board,.cf{grid-template-columns:1fr}}
+</style>
+<script src="assets/pwa.js?v=5" defer></script>
+</head>
+<body>
+<header class="sc-top"><span class="cafe" id="cafe"></span><span id="lnk"></span><span class="sc-clock" id="clk"></span></header>
+<main id="s" style="flex:1;display:flex;flex-direction:column;min-height:0"></main>
+<footer class="sc-foot" id="foot"></footer>
+<script src="assets/config.js?v=5"></script>
+<script src="assets/menu.js?v=5"></script>
+<script src="assets/darj.js?v=5"></script>
+<script>
+  window.DARJ_ROLE = new URLSearchParams(location.search).get('mode') === 'cart' ? 'cart' : 'board';
+</script>
+<script src="assets/link.js?v=5"></script>
+<script>
+(function () {
+  const D = window.DARJ;
+  const L = window.DARJ_LINK;
+  D.startLive();
+  const lnk = () => { document.getElementById('lnk').innerHTML = L.pill(); };
+  L.on(lnk); lnk(); L.track({ name: L.role === 'cart' ? 'شاشة العميل' : 'شاشة الطلبات' });
+  document.getElementById('cafe').innerHTML = `<b>${D.esc(D.STORE.nameEn)}</b><span>${D.esc(D.STORE.nameAr)} · ${D.esc(D.STORE.tagEn || 'Specialty Coffee')}</span>`;
+  const foot = () => { document.getElementById('foot').innerHTML = (D.SAT ? !D.TRAIN : D.REAL) ? '' : `<span><span class="demo-tag">${D.TRAIN ? 'Training' : 'Demo'}</span> &nbsp;كل البيانات وهمية</span>${D.CFG.poweredBy === false ? '' : '<span>Powered by <b>DARJ</b></span>'}`; };
+  foot(); D.on((w) => { if (w === 'remote') foot(); });
+  const mode = new URLSearchParams(location.search).get('mode') === 'cart' ? 'cart' : 'board';
+  const el = document.getElementById('s');
+  const seenReady = new Set();
+  let first = true;
+  function say(o) {
+    try {
+      const u = new SpeechSynthesisUtterance(`طلب رقم ${o.no} جاهز${o.name ? '، ' + o.name : ''}`);
+      u.lang = 'ar-SA'; u.rate = .95;
+      if (window.speechSynthesis && speechSynthesis.getVoices().some((v) => v.lang.startsWith('ar'))) speechSynthesis.speak(u);
+    } catch (e) { /* مفيش صوت عربي — نكتفي بالتنبيه */ }
+  }
+  function board() {
+    const s = D.state();
+    const now = Date.now();
+    const act = s.orders.filter((o) => (o.status === 'prep' && D.stationsOf(s, o).length) || (o.status === 'new' && !o.payFirst));
+    const queue = act.filter((o) => o.status === 'new' || D.stStage(o, 'all', now) === 'new').sort((a, b) => a.ts - b.ts);
+    const prep = act.filter((o) => !queue.includes(o)).sort((a, b) => a.ts - b.ts);
+    const ready = s.orders.filter((o) => o.status === 'ready').sort((a, b) => b.tsReady - a.tsReady);
+    const fresh = [];
+    ready.forEach((o) => { if (!seenReady.has(o.id)) { seenReady.add(o.id); if (!first) fresh.push(o); } });
+    first = false;
+    if (fresh.length) { D.sound('ready'); fresh.forEach(say); }
+    // لو جزء من الطلب خلص (المشروب جاهز والأكل لسه) بيبان تحت الرقم
+    const part = (o) => { const sts = D.stationsOf(s, o); if (sts.length < 2) return ''; const done = sts.filter((x) => D.stStage(o, x, now) === 'ready'); return done.length ? `<i>${done.map((x) => (x === 'bar' ? 'المشروب' : 'الأكل')).join(' و')} جاهز</i>` : ''; };
+    const n = (o, hot, extra) => `<span class="n${hot ? ' hot' : ''}">${o.no}${o.name ? `<small>${D.esc(o.name)}</small>` : ''}${extra || ''}</span>`;
+    el.innerHTML = `<div class="board">
+      <section class="col col--queue"><h2><b>In line</b><span>استلمنا طلبك</span></h2><div class="nums">${queue.map((o) => n(o)).join('') || '<span class="muted">—</span>'}</div></section>
+      <section class="col col--prep"><h2><b>Preparing</b><span>قيد التحضير</span></h2><div class="nums">${prep.map((o) => n(o, false, part(o))).join('') || '<span class="muted">—</span>'}</div></section>
+      <section class="col col--ready"><h2><b>Ready</b><span>جاهز — تفضّل بالاستلام</span></h2><div class="nums">${ready.map((o) => n(o, fresh.includes(o))).join('') || '<span style="opacity:.5">—</span>'}</div></section></div>`;
+  }
+  function cart() {
+    const c = D.readCart();
+    const s = D.state();
+    if (!c || c.stage === 'idle' || (c.stage === 'cart' && !c.lines.length) || Date.now() - c.ts > 10 * 60000) {
+      el.innerHTML = `<div class="cf__msg"><span class="label">Welcome</span><h1>Ahlan.</h1><p>${D.esc(D.CFG.welcome || ('أهلًا بك في ' + D.STORE.nameAr))}</p></div>`;
+      return;
+    }
+    if (c.stage === 'done') {
+      el.innerHTML = `<div class="cf__msg"><span class="label">Thank you</span><h1>#${c.no}</h1><p>شكرًا! طلبك قيد التحضير الآن، وسننادي رقمك فور تجهيزه.${c.change ? `<br><b>الباقي: ${D.fmt(c.change)} ر.س</b>` : ''}</p></div>`;
+      return;
+    }
+    el.innerHTML = `<div class="cf">
+      <section class="cf__list"><span class="label">Your order · طلبك</span>${c.lines.map((l) => `<div class="cf__l"><span class="q">${l.qty}×</span><span><b>${D.esc(l.ar)}</b><small>${D.esc(l.en)}${l.mods.length ? ' · ' + D.esc(l.mods.join(' · ')) : ''}${l.reward ? ' · هدية الولاء' : ''}</small></span><span class="p">${D.fmt(l.total)}</span></div>`).join('')}</section>
+      <aside class="cf__side">
+        <div class="cf__tot"><span class="label" style="color:rgba(255,255,255,.6)">${c.stage === 'pay' ? 'Please pay' : 'Total'}</span><div class="big">${D.money(c.c.total)}</div><small>${c.c.vat ? `شامل ضريبة القيمة المضافة 15% (${D.fmt(c.c.vat)} ر.س)` : 'الإجمالي'}${c.c.disc ? ` · خصم ${D.fmt(c.c.disc)}` : ''}</small></div>
+        ${c.stage === 'pay' ? `<div class="cf__card"><b style="font-size:18px">قرّب البطاقة أو الجوال من جهاز الشبكة</b><div style="display:flex;justify-content:center;gap:8px;margin-top:12px">${['mada', 'apple', 'stc'].map((m) => `<span style="width:56px">${D.payIcon(m)}</span>`).join('')}</div></div>` : ''}
+        ${c.cust ? `<div class="cf__card"><span class="label">Loyalty · ${D.esc(c.cust.name)}</span><div style="margin:12px 0"><span class="stamps lg">${Array.from({ length: c.cust.need }, (_, i) => `<i class="${i < c.cust.stamps ? 'on' : ''}"></i>`).join('')}</span></div><b>${c.cust.rewards ? `لديك ${c.cust.rewards} مشروب هدية` : `متبقٍ ${c.cust.need - c.cust.stamps} على المشروب الهدية`}</b></div>` : `<div class="cf__card"><b>هل لديك رقم جوال مسجّل؟</b><p class="muted" style="margin-top:6px">أعطِ الكاشير رقمك واحصل على ختم مع كل مشروب.</p></div>`}
+      </aside></div>`;
+  }
+  const draw = mode === 'cart' ? cart : board;
+  D.on(draw);
+  setInterval(draw, mode === 'cart' ? 4000 : 10000);
+  draw();
+  const clk = () => { document.getElementById('clk').textContent = D.time(Date.now(), true); };
+  clk(); setInterval(clk, 10000);
+})();
+</script>
+</body>
+</html>

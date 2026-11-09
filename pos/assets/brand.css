@@ -1,0 +1,47 @@
+/* محصول فاخر — هوية الكاشير: أسود ونقطة حمرا على كريمي، وخط IBM Plex Sans Arabic (نفس خطوط الموقع) */
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/ibm-400-ar.woff2') format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFC}
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/ibm-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:500;font-display:swap;src:url('fonts/ibm-500-ar.woff2') format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFC}
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:500;font-display:swap;src:url('fonts/ibm-500-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/ibm-600-ar.woff2') format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFC}
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/ibm-600-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/ibm-700-ar.woff2') format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFC}
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/ibm-700-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:500 700;font-display:swap;src:url('fonts/space-500-700-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+
+:root{
+  --paper:#F4F0E8;
+  --paper-2:#E9E3D8;
+  --card:#FFFDF9;
+  --card-2:#F9F6F0;
+  --ink:#141414;
+  --ink-2:#45413B;
+  --muted:#8A847A;
+  --line:#E3DDD2;
+  --line-2:#EEE9DF;
+  --brand:#D93642;
+  --f:"IBM Plex Sans Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-en:"Space Grotesk","IBM Plex Sans Arabic",system-ui,sans-serif;
+}
+/* زرار الدفع والأساسيات بالأسود، والنقطة الحمرا للتمييز */
+.btn--go{background:var(--ink);color:#fff}
+.btn--go:hover{background:#000}
+.cart-fab{background:var(--ink);box-shadow:0 16px 30px -14px rgba(0,0,0,.6)}
+.brand__mark{width:30px;height:30px;object-fit:contain}
+.brand__word{font-family:var(--f-en);font-weight:700;font-size:17px;letter-spacing:.06em}
+.brand__ar{font-family:var(--f-en);font-weight:500;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);direction:ltr}
+.rail a.on{background:var(--ink)}
+.rail a.on .ico{color:var(--brand)}
+.chip.on{background:var(--ink);border-color:var(--ink)}
+.item__img{background-color:#fff}
+.item.flash{animation:flashLC .45s var(--ease)}
+@keyframes flashLC{40%{box-shadow:0 0 0 3px var(--brand);transform:scale(.97)}}
+.badge{background:var(--brand)}
+.demo-tag::before{background:var(--brand)}
+.tour__hole{box-shadow:0 0 0 9999px rgba(20,20,20,.5),0 0 0 3px var(--brand)}
+.tour__hole::after{border-color:var(--brand)}
+.tour__dots i.on,.tour__dots i.done{background:var(--brand)}
+.receipt .rc-logo b{letter-spacing:.12em}
+
+.top__brand .brand{white-space:nowrap}
+@media (max-width:640px){.top__brand .brand__word{font-size:14px}.top__brand .brand__ar{display:none}}
