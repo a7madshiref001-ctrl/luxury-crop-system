@@ -780,6 +780,17 @@
     if (w.crypto && w.crypto.randomUUID) return prefix + w.crypto.randomUUID().replace(/-/g, "");
     return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
   }
+  // نفس الطلب لو اتبعت تاني بعد فشل (النت قطع والرد ما وصلش) بياخد نفس المفتاح، فالسيرفر مايسجلوش مرتين
+  var PENDING_KEY = "luxurycrop.pending.v1", pendingOrder = null;
+  function orderKeyFor(sig) {
+    var saved = pendingOrder;
+    if (!saved) { try { saved = JSON.parse(sessionStorage.getItem(PENDING_KEY) || "null"); } catch (e) {} }
+    if (saved && saved.sig === sig && Date.now() - saved.t < 30 * 60000) { pendingOrder = saved; return saved.key; }
+    pendingOrder = { sig: sig, key: requestId("o_"), t: Date.now() };
+    try { sessionStorage.setItem(PENDING_KEY, JSON.stringify(pendingOrder)); } catch (e) {}
+    return pendingOrder.key;
+  }
+  function clearOrderKey() { pendingOrder = null; try { sessionStorage.removeItem(PENDING_KEY); } catch (e) {} }
   function clientId() {
     var key = "luxurycrop.client.v1", id = "";
     try { id = localStorage.getItem(key) || ""; } catch (e) {}
@@ -841,13 +852,17 @@
     var up = cart.filter(function (l) { return l.up; }).reduce(function (a, l) { return a + l.p * l.q; }, 0);
     var ad = cart.filter(function (l) { return l.addon; }).reduce(function (a, l) { return a + l.p * l.q; }, 0);
 
+    var orderLines = cart.map(function (l) { return { kind: l.kind, id: l.id, qty: l.q, size_index: l.size_index, note: l.note || "" }; });
+    var orderKey = orderKeyFor(JSON.stringify([servicePoint ? locationToken : Number(tbl), nm, ph, orderLines]));
+
     if (button) { button.disabled = true; button.setAttribute("aria-busy", "true"); button.textContent = isEnglish() ? "Sending your order…" : "جاري إرسال الطلب…"; }
     try {
       var result = await w.Backend.placeOrder({
         table_no: servicePoint ? null : Number(tbl), location_token: servicePoint ? locationToken : "", customer_name: nm, customer_phone: ph,
-        idempotency_key: requestId("o_"), client_id: clientId(),
-        lines: cart.map(function (l) { return { kind: l.kind, id: l.id, qty: l.q, size_index: l.size_index, note: l.note || "" }; })
+        idempotency_key: orderKey, client_id: clientId(),
+        lines: orderLines
       });
+      clearOrderKey();
       F.pushOrder({ id: String(result.order_number), t: Date.now(), lines: cart.slice(), total: Number(result.total || total), up: up, addon: ad, mode: servicePoint ? servicePoint.kind : m, table: servicePoint ? servicePoint.label : +tbl, name: nm, phone: ph });
       if (ph) F.pushCustomer({ t: Date.now(), phone: ph, name: nm || "—", spent: Number(result.total || total) });
       if (S.loyalty.on) { var L = F.get(F.K.loy, { n: 0 }); L.n = (L.n + 1) % (S.loyalty.goal + 1); F.set(F.K.loy, L); }
