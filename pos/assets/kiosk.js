@@ -154,29 +154,35 @@
   /* ---------- flow ---------- */
   function render() { ({ hello, menu, pay }[screen] || hello)(); }
   function reset() {
-    clearInterval(doneT); lines = []; name = ''; cat = null; result = null; busy = false; openCart = false; screen = 'hello';
+    clearInterval(doneT); attempt = null; lines = []; name = ''; cat = null; result = null; busy = false; openCart = false; screen = 'hello';
     document.querySelectorAll('.ksheet,.kidle').forEach((x) => x.remove());
     render();
   }
+  let attempt = null; // محاولة الإرسال الحالية: {sig, kid, pay}
   async function place(method) {
     if (busy || !lines.length) return;
     if (!online()) { fail('الكشك غير متصل بالكاشير الآن'); return; }
     busy = true;
     const amount = total();
-    let payInfo = null;
-    if (method === 'card') {
+    // نفس الطلب لو اتبعت تاني بعد فشل: نفس الرقم المرجعي (الكاشير مايسجلوش مرتين) ونفس عملية الدفع (مايتخصمش مرتين)
+    const sig = JSON.stringify([method, type, name, lines.map((l) => [l.pid, l.qty, l.mods, l.note || ''])]);
+    if (!attempt || attempt.sig !== sig) attempt = { sig, kid: 'k' + D.uid(), pay: null };
+    const at = attempt;
+    let payInfo = at.pay;
+    if (method === 'card' && !payInfo) {
       charging(amount);
       await new Promise((r) => setTimeout(r, 2300));
-      payInfo = { m: Math.random() < .6 ? 'mada' : 'apple', auth: String(100000 + Math.floor(Math.random() * 899999)) };
+      payInfo = at.pay = { m: Math.random() < .6 ? 'mada' : 'apple', auth: String(100000 + Math.floor(Math.random() * 899999)) };
       D.sound('ok');
     }
     sending();
-    const draft = { kid: 'k' + D.uid(), type, name, lines: lines.map((l) => ({ pid: l.pid, qty: l.qty, mods: l.mods, note: l.note || '' })), pay: payInfo };
+    const draft = { kid: at.kid, type, name, lines: lines.map((l) => ({ pid: l.pid, qty: l.qty, mods: l.mods, note: l.note || '' })), pay: payInfo };
     let r = null;
     try { r = await Promise.resolve(D.act('kiosk', { draft })); } catch (e) { r = null; }
     busy = false;
     if (!r || !r.no) { fail(method === 'card' ? `تم دفع ${fmt(amount)} ر.س لكن الطلب لم يصل — رقم العملية ${payInfo.auth}` : 'لم يصل الطلب للكاشير'); return; }
     const sts = D.stationsOf(S(), { lines: draft.lines.map((l) => Object.assign({}, l, { st: D.routeOf(S(), D.prod(l.pid)) })), voided: {} });
+    attempt = null;
     result = { no: r.no, total: r.total != null ? r.total : amount, paid: !!payInfo, name, sts };
     screen = 'done';
     D.sound('ready');

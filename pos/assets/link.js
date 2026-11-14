@@ -65,6 +65,7 @@
     });
   }
   let client = null, ch = null;
+  let skew = 0; // فرق ساعة الجهاز ده عن ساعة الكاشير (الشاشات بس) — عشان جهاز ساعته غلط مايترفضش
   async function connect(onMsg) {
     const lib = await sdk();
     client = client || lib.createClient(C.url, C.key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'darj-link-' + BASE } });
@@ -88,7 +89,7 @@
   }
   async function send(obj) {
     if (!ch || L.status !== 'on') return false;
-    obj.from = DEV; obj.ts = Date.now();
+    obj.from = DEV; obj.ts = Date.now() + skew;
     try { const r = await ch.send({ type: 'broadcast', event: 'm', payload: await seal(obj) }); return r === 'ok'; } catch (e) { return false; }
   }
   L.track = (meta) => { Object.assign(L, meta); if (ch && L.status === 'on') ch.track({ role: ROLE, st: L.st, name: L.name, at: Date.now() }); };
@@ -119,7 +120,7 @@
   function snapSoon() { if (!snapT) snapT = setTimeout(snapNow, 140); }
   const done = new Map(); // الأمر اللي اتنفّذ قبل كده مايتنفّذش تاني (لو الشاشة بعتته مرتين)
   function exec(m) {
-    if (Math.abs(Date.now() - (m.ts || 0)) > 10 * 60000) return;
+    if (Math.abs(Date.now() - (m.ts || 0)) > 10 * 60000) { send({ t: 'ack', to: m.from, cid: m.cid, res: { ok: 0, err: 'clock' } }); return; } // أمر قديم أو ساعة الجهاز غلط: الشاشة تتبلّغ بدل ما تفضل مستنية
     let res = done.get(m.cid);
     if (!res) {
       let r = null;
@@ -185,14 +186,16 @@
      SATELLITE — الشاشات المربوطة على أجهزة تانية
      ===================================================================== */
   const pending = new Map();
-  let remoteCart = null;
+  let remoteCart = null, lastSnap = null;
   const SNAP = BASE + ':snap';
   function onSat(m) {
     if (m.t === 'snap' && m.snap) {
       L.last = Date.now();
       const was = L.live; L.live = true;
+      skew = (m.ts || Date.now()) - Date.now(); D.skew = skew;
+      lastSnap = JSON.stringify(m.snap); // نسخة نص: الحركة المتفائلة بتعدّل نفس الكائنات، فالرجوع لازم يبقى من نسخة منفصلة
       D.adopt(m.snap, 'remote');
-      try { localStorage.setItem(SNAP, JSON.stringify(m.snap)); } catch (e) { /* */ }
+      try { localStorage.setItem(SNAP, lastSnap); } catch (e) { /* */ }
       if (!was) fire();
     } else if (m.t === 'cart') { L.last = Date.now(); remoteCart = m.c; D.adopt(D.state(), 'cart'); }
     else if (m.t === 'ack' && m.to === DEV) { const p = pending.get(m.cid); if (p) { pending.delete(m.cid); p(m.res); } }
@@ -207,12 +210,23 @@
     });
   }
   function startSat() {
-    try { const c = JSON.parse(localStorage.getItem(SNAP) || 'null'); if (c && c.day === D.dayKey(Date.now())) D.adopt(c, 'remote'); } catch (e) { /* */ }
+    try { const c = JSON.parse(localStorage.getItem(SNAP) || 'null'); if (c && c.day === D.dayKey(Date.now())) { lastSnap = JSON.stringify(c); D.adopt(c, 'remote'); } } catch (e) { /* */ }
     D.readCart = () => remoteCart;
+    const warn = (t, s) => { if (D.toast) D.toast(t, s, { warn: 1, ic: 'wifioff', ms: 5000 }); if (D.sound) D.sound('err'); };
     D.act = (op, a) => {
       a = a || {};
-      if (op !== 'kiosk' && D.ACT[op]) { try { D.ACT[op](a); } catch (e) { /* */ } } // بتبان على طول، والكاشير بيأكّد
-      return call(op, a);
+      if (op === 'kiosk') return call(op, a);
+      // الكاشير مش متصل: الحركة ماتتسجلش، فماتبانش كأنها اتنفذت
+      if (!L.hubOnline()) { warn('الكاشير غير متصل الآن', 'لم تُسجَّل الحركة — أعدها بعد عودة الاتصال بالكاشير'); return Promise.resolve(null); }
+      if (D.ACT[op]) { try { D.ACT[op](a); } catch (e) { /* */ } } // بتبان على طول، والكاشير بيأكّد
+      return call(op, a).then((res) => {
+        if (!res || res.ok === 0) { // ما وصلتش: الشاشة ترجع لآخر حالة من الكاشير وتنبّه
+          if (lastSnap) { try { D.adopt(JSON.parse(lastSnap), 'remote'); } catch (e) { /* */ } }
+          if (res && res.err === 'clock') warn('ساعة هذا الجهاز غير مضبوطة', 'اضبط التاريخ والوقت على الجهاز ثم أعد المحاولة');
+          else warn('لم تصل الحركة للكاشير', 'أعد المحاولة — تأكد أن الكاشير مفتوح ومتصل بالإنترنت');
+        }
+        return res;
+      });
     };
     useSecret(pair.s).then(() => { L.status = 'connecting'; fire(); return connect(onSat); }).catch(() => { L.status = 'err'; fire(); });
     setInterval(() => { const on = L.status === 'on' && Date.now() - L.last < 45000; if (on !== !!L.live) { L.live = on; fire(); } if (L.status === 'on' && !on) send({ t: 'hello' }); }, 5000);

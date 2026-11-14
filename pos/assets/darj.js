@@ -17,7 +17,7 @@
   const KEY = BASE + (D.LIVE ? (train ? ':train' : ':live') : '') + ':state';
   const CART_KEY = BASE + ':cart';
   const LEAD_KEY = BASE + ':leader';
-  D.setTraining = (on) => { try { localStorage.setItem(BASE + ':train', on ? '1' : '0'); sessionStorage.removeItem('darj:me'); } catch (e) { /* */ } location.reload(); };
+  D.setTraining = (on) => { try { localStorage.setItem(BASE + ':train', on ? '1' : '0'); if (!on && D.TRAIN) localStorage.setItem(BASE + ':trainEnd', String(Date.now())); sessionStorage.removeItem('darj:me'); } catch (e) { /* */ } location.reload(); };
   const TAB = Math.random().toString(36).slice(2, 9);
 
   /* ---------- store ---------- */
@@ -69,6 +69,8 @@
     { id: 'team', ar: 'الموظفين والصلاحيات وسجل الحركات', cashier: 0, supervisor: 0, manager: 1, barista: 0 },
     { id: 'settings', ar: 'الإعدادات والأجهزة', cashier: 0, supervisor: 0, manager: 1, barista: 0 },
   ];
+  // سياسة العميل ممكن تغيّر الصلاحيات الافتراضية — مثال: DARJ_CONFIG.perms = { void: { cashier: 1 } }
+  Object.keys(CFG.perms || {}).forEach((id) => { const p = D.PERMS.find((x) => x.id === id); if (p) Object.assign(p, CFG.perms[id]); });
   D.can = (u, perm) => {
     const p = D.PERMS.find((x) => x.id === perm);
     const user = typeof u === 'string' ? D.staff(u) : u;
@@ -121,7 +123,10 @@
   ];
   // صنف اتضاف في الموقع بعد آخر تحديث لمنيو الكاشير: بيظهر في الطلب باسمه كملاحظة، ومش موجود في شاشة البيع
   D.SITE_ITEM = { id: 'site_item', cat: '_site', ar: 'صنف من الموقع', online: 'صنف من الموقع', en: 'Website item', price: 0, drink: true, station: 'bar', mods: [], r: {}, pop: 0 };
-  D.prod = (id) => D.PRODUCTS.find((p) => p.id === id) || (id === 'site_item' ? D.SITE_ITEM : undefined);
+  D.has = (id) => id === 'site_item' || D.PRODUCTS.some((p) => p.id === id);
+  // صنف اتشال من المنيو بعد ما اتباع: الفواتير القديمة والمرتجعات والتحضير لازم تفضل شغالة
+  const gone = (id) => ({ id, cat: '_gone', ar: 'صنف محذوف من المنيو', en: 'Removed item', price: 0, mods: [], r: {}, pop: 0, gone: 1 });
+  D.prod = (id) => D.PRODUCTS.find((p) => p.id === id) || (id === 'site_item' ? D.SITE_ITEM : gone(id));
   D.isDrink = (p) => (p.drink != null ? !!p.drink : !['sweet', 'beans'].includes(p.cat) && p.id !== 'water');
   D.PIMG = D.PIMG || {}; // id → true لما الصورة تكون موجودة في assets/img/p/ (بيتملى من img.js)
   D.img = (p) => p.img || (D.PIMG[p.id] ? `assets/img/p/${p.id}.jpg` : '');
@@ -506,8 +511,8 @@
     // الهالك
     [[7, 5, 'milk', 2000, 'حليب منتهي من أمس', 'u2'], [12, 40, 'span', 1, 'مشروب حُضّر بالخطأ (حليب بدل شوفان)', 'u2'], [18, 25, 'crois', 2, 'كرواسون بايت', 'u3']].forEach(([h, mi, id, q, why, u]) => {
       const ts = D.at(h, mi, now); if (ts >= now) return;
-      if (!D.prod(id) && !D.ING.some((i) => i.id === id)) return;
-      const p = D.prod(id);
+      if (!D.has(id) && !D.ING.some((i) => i.id === id)) return;
+      const p = D.has(id) ? D.prod(id) : null;
       if (p) { const r = D.recipe({ pid: id, qty: q, mods: D.defMods(p) }); consume(S.stock, [{ pid: id, qty: q, mods: D.defMods(p) }]); S.waste.push({ ts, pid: id, q, why, user: u, cost: D.r2(D.recipeCost(r)) }); }
       else { S.stock[id] = Math.max(0, S.stock[id] - q); S.waste.push({ ts, ing: id, q, why, user: u, cost: D.r2(q * D.ing(id).cost) }); }
       log(ts, u, 'waste', `هالك: ${p ? p.ar + ' ×' + q : D.ing(id).ar + ' ' + D.fmt0(q) + ' ' + D.UNIT[D.ing(id).unit]} — ${why}`);
@@ -563,11 +568,14 @@
   const emit = (why) => subs.forEach((fn) => { try { fn(why); } catch (e) { console.error(e); } });
   function read() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
   let storageWarned = 0;
+  let unsaved = false; // آخر حفظ فشل: الذاكرة هي المرجع لحد ما الحفظ ينجح
   function write(s) {
-    try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { // التخزين ممكن يبقى مقفول — الديمو يكمل في الذاكرة، والنسخة الحقيقية لازم تنبّه
-      if (D.REAL && D.toast && Date.now() - storageWarned > 60000) { storageWarned = Date.now(); D.toast('تعذّر حفظ البيانات على الجهاز', 'نزّل نسخة احتياطية من الإعدادات وراجع مساحة المتصفح', { warn: 1, ic: 'alert', ms: 9000 }); }
+    try { localStorage.setItem(KEY, JSON.stringify(s)); unsaved = false; } catch (e) {
+      unsaved = true; // التخزين ممكن يبقى مقفول — الديمو يكمل في الذاكرة، والنسخة الحقيقية لازم تنبّه
+      if (D.REAL && D.toast && Date.now() - storageWarned > 15000) { storageWarned = Date.now(); D.toast('تعذّر حفظ البيانات على الجهاز', 'نزّل نسخة احتياطية من الإعدادات وراجع مساحة المتصفح', { warn: 1, ic: 'alert', ms: 9000 }); }
     }
   }
+  D.saved = () => !unsaved;
   function emptyLive(now) {
     return { v: 1, live: 1, day: D.dayKey(now), created: now, seq: { inv: 0, no: 0, cn: 0, z: 0, po: 0 },
       orders: [], holds: [], shifts: [], payouts: [], log: [], waste: [], receipts: [], counts: [], feed: [], pendingRemote: [],
@@ -591,7 +599,10 @@
     const sm = { day, total: 0, vat: 0, orders: ok.length, refunds: 0, cost: 0, by: {}, hours: Array(24).fill(0), items: {} };
     ok.forEach((o) => {
       sm.total += D.netOf(o); sm.vat += o.vat - (o.refunds || []).reduce((x, r) => x + (r.vat || 0), 0); sm.refunds += o.refunded || 0;
-      o.pays.forEach((p) => { sm.by[p.m] = D.r2((sm.by[p.m] || 0) + p.a); });
+      // طرق الدفع = الفلوس اللي دخلت فعلًا: من غير رصيد الاستبدال، وبعد طرح المرتجعات وفرق الاستبدال اللي رجع كاش
+      o.pays.forEach((p) => { if (p.m !== 'credit') sm.by[p.m] = D.r2((sm.by[p.m] || 0) + p.a); });
+      (o.refunds || []).forEach((r) => (r.parts || []).forEach((p) => { if (p.m !== 'exchange') sm.by[p.m] = D.r2((sm.by[p.m] || 0) - p.a); }));
+      if (o.creditBack) sm.by.cash = D.r2((sm.by.cash || 0) - o.creditBack);
       sm.hours[D.ksa(o.ts).h] = D.r2(sm.hours[D.ksa(o.ts).h] + o.total);
       o.lines.forEach((l) => { const it = sm.items[l.pid] = sm.items[l.pid] || { q: 0, v: 0 }; it.q += l.qty; it.v = D.r2(it.v + l.total); sm.cost += l.cost || 0; });
     });
@@ -600,6 +611,19 @@
   };
   D.today = (st) => { st = st || S; return st.orders.filter((o) => !o.day || o.day === st.day); };
   const KEEP_DAYS = 3; // آخر 3 أيام بتفضل على الجهاز عشان المرتجعات
+  // لو أرشفة يوم فشلت: سجله يفضل محفوظ في الحالة (وفي النسخة الاحتياطية) لحد ما الأرشفة تنجح، والمدير يتنبّه
+  function archFail(rec) {
+    try { D.mutate((s) => { s.unarchived = (s.unarchived || []).filter((x) => x.day !== rec.day).concat([rec]).slice(-14); }, 'archive'); } catch (e) { /* */ }
+    if (D.toast) D.toast(`تعذّرت أرشفة يوم ${rec.day}`, 'بياناته محفوظة مؤقتًا على الجهاز — نزّل نسخة احتياطية من الإعدادات', { warn: 1, ic: 'alert', ms: 12000 });
+  }
+  D.retryArchive = async () => {
+    const list = ((S && S.unarchived) || []).slice();
+    for (const rec of list) {
+      try { await D.archive(rec); } catch (e) { return false; }
+      D.mutate((s) => { s.unarchived = (s.unarchived || []).filter((x) => x.day !== rec.day); }, 'archive');
+    }
+    return true;
+  };
   function rollover(st, now) {
     const day = D.dayKey(now);
     if (st.day === day) return false;
@@ -607,7 +631,8 @@
     const open = new Set(st.shifts.filter((x) => !x.close).map((x) => x.id));
     const todays = st.orders.filter((o) => (o.day || prev) === prev);
     st.days = (st.days || []).filter((d) => d.day !== prev).concat([D.summarize(prev, todays)]).slice(-400);
-    D.archive({ day: prev, orders: todays, shifts: st.shifts.filter((x) => x.close), payouts: st.payouts.filter((p) => !open.has(p.shift)), waste: st.waste, log: st.log, receipts: st.receipts, counts: st.counts }).catch(() => {});
+    const rec = { day: prev, orders: todays, shifts: st.shifts.filter((x) => x.close), payouts: st.payouts.filter((p) => !open.has(p.shift)), waste: st.waste, log: st.log, receipts: st.receipts, counts: st.counts };
+    D.archive(rec).catch(() => archFail(rec));
     const recent = Array.from(new Set(st.orders.map((o) => o.day || prev))).sort().slice(-(KEEP_DAYS - 1));
     st.orders = st.orders.filter((o) => recent.includes(o.day || prev) || open.has(o.shift) || ['new', 'prep', 'ready'].includes(o.status) || o.unpaid);
     st.shifts = st.shifts.filter((x) => !x.close);
@@ -641,12 +666,12 @@
   D.orderVat = (o) => (o && o.total > 0 ? o.vat > 0 : D.vatOn());
   D.exVat = (p) => (D.vatOn() ? p / 1.15 : p);
   D.noteName = (o) => (D.orderVat(o) ? { ar: 'إشعار دائن', en: 'Credit note' } : { ar: 'إشعار مرتجع', en: 'Refund note' });
-  D.mutate = (fn, why) => { if (!S) D.load(); if (D.SAT) { const r = fn(S); S.rev = (S.rev || 0) + 1; emit(why || 'local'); return r; } const fresh = read(); if (fresh && fresh.day === S.day) { S = fresh; bind(); } const r = fn(S); bind(); S.rev = (S.rev || 0) + 1; write(S); emit(why || 'local'); return r; };
-  D.installState = (st) => { S = st; write(S); bind(); emit('reset'); };
+  D.mutate = (fn, why) => { if (!S) D.load(); if (D.SAT) { const r = fn(S); S.rev = (S.rev || 0) + 1; emit(why || 'local'); return r; } const fresh = unsaved ? null : read(); if (fresh && fresh.day === S.day && (fresh.rev || 0) >= (S.rev || 0)) { S = fresh; bind(); } const r = fn(S); bind(); S.rev = (S.rev || 0) + 1; write(S); emit(why || 'local'); return r; };
+  D.installState = (st, quiet) => { S = st; write(S); bind(); if (!quiet) emit('reset'); };
   D.reset = () => { try { localStorage.removeItem(KEY); localStorage.removeItem(CART_KEY); } catch (e) { /* */ } S = D.REAL ? emptyLive(Date.now()) : seed(Date.now()); write(S); bind(); emit('reset'); };
   window.addEventListener('storage', (e) => {
     if (D.SAT) return;
-    if (e.key === KEY && e.newValue) { try { const n = JSON.parse(e.newValue); const same = S && n.rev === S.rev && n.day === S.day; S = n; bind(); if (!same) emit('remote'); } catch (er) { /* */ } }
+    if (e.key === KEY && e.newValue && !unsaved) { try { const n = JSON.parse(e.newValue); const same = S && n.rev === S.rev && n.day === S.day; S = n; bind(); if (!same) emit('remote'); } catch (er) { /* */ } }
     if (e.key === CART_KEY) emit('cart');
   });
   // لو الصفحة اتقفلت شوية، نكمّل النشاط اللي فات بطلبات واقعية (من غير ما نزوّد الجرس)
@@ -751,7 +776,7 @@
   D.kioskOrder = (d) => D.mutate((s) => {
     const dup = d.kid && s.orders.find((o) => o.kid === d.kid); if (dup) return dup;
     const now = Date.now();
-    const lines = (d.lines || []).filter((l) => D.prod(l.pid) && l.qty > 0).map((l) => ({ pid: l.pid, qty: Math.min(20, l.qty), mods: l.mods || D.defMods(D.prod(l.pid)), note: l.note || '', unit: D.unitPrice(s, l), total: D.lineTotal(s, l), cost: D.lineCost(l), st: D.routeOf(s, D.prod(l.pid)) }));
+    const lines = (d.lines || []).filter((l) => D.has(l.pid) && l.qty > 0).map((l) => ({ pid: l.pid, qty: Math.min(20, l.qty), mods: l.mods || D.defMods(D.prod(l.pid)), note: l.note || '', unit: D.unitPrice(s, l), total: D.lineTotal(s, l), cost: D.lineCost(l), st: D.routeOf(s, D.prod(l.pid)) }));
     if (!lines.length) return null;
     const c = D.calc(s, lines, null);
     const paid = !!d.pay;
@@ -901,8 +926,8 @@
   D.tick = () => {
     if (!S || D.SAT || !isLeader()) return;
     const now = Date.now();
-    if (D.dayKey(now) !== S.day) { if (D.REAL) { S = read() || S; rollover(S, now); write(S); bind(); emit('day'); } else D.reset(); return; }
-    const fresh = read(); if (fresh && fresh.day === S.day) { S = fresh; bind(); }
+    if (D.dayKey(now) !== S.day) { if (D.REAL) { S = (unsaved ? null : read()) || S; rollover(S, now); write(S); bind(); emit('day'); } else D.reset(); return; }
+    const fresh = unsaved ? null : read(); if (fresh && fresh.day === S.day && (fresh.rev || 0) >= (S.rev || 0)) { S = fresh; bind(); }
     const s = S;
     let changed = false;
     const before = s.orders.map((o) => o.status).join();
@@ -942,7 +967,7 @@
       s.pendingRemote.forEach((o) => { o.synced = true; s.orders.push(o); D.feedPush(feedFor(o)); });
       s.pendingRemote = [];
       s.orders.sort((a, b) => a.ts - b.ts);
-      D.log(user, 'sync', `عاد الاتصال — تمت مزامنة ${n} فاتورة مع السحابة`);
+      D.log(user, 'sync', D.REAL ? 'عاد الاتصال بالإنترنت' : `عاد الاتصال — تمت مزامنة ${n} فاتورة مع السحابة`);
       return n;
     }
     return 0;
@@ -969,45 +994,84 @@
   };
 
   /* ---------- receipts ---------- */
+  // شكل الفاتورة: القالب والمقاس والهوامش والمحتوى — من Settings ← Receipt، ومحفوظ في settings.rc
+  D.RC_TPLS = [
+    { id: 'classic', en: 'Classic', ar: 'الكلاسيكي', sub: 'كل شيء في المنتصف وخطوط متقطعة', set: { sep: 'dash', bigNo: false, itemEn: true, addr: true, cr: true, cur: true } },
+    { id: 'modern', en: 'Modern', ar: 'العصري', sub: 'رقم الطلب كبير والإجمالي في شريط أسود', set: { sep: 'solid', bigNo: true, itemEn: true, addr: true, cr: true, cur: true } },
+    { id: 'table', en: 'Table', ar: 'الجدول', sub: 'الصنف والكمية والسعر في أعمدة', set: { sep: 'solid', bigNo: false, itemEn: true, addr: true, cr: true, cur: true } },
+    { id: 'compact', en: 'Compact', ar: 'المختصر', sub: 'أقصر فاتورة ممكنة — توفّر الورق', set: { sep: 'dash', bigNo: false, itemEn: false, addr: false, cr: false, cur: false } },
+  ];
+  D.RC_DEF = { tpl: 'classic', w: 80, mx: 4, mt: 5, mb: 6, fs: 12, sep: 'dash', heavy: false, logo: false, logoW: 24, img: '', nameEn: true, addr: true, phone: true, cr: true, bigNo: false, cashier: true, type: true, itemEn: true, cur: true, loyal: true, thanks: true, head: '', foot: '', note: '' };
+  D.RC_LIM = { w: [40, 120], mx: [0, 15], mt: [0, 30], mb: [0, 40], fs: [8, 18], logoW: [10, 60] };
+  D.rc = (over) => {
+    const st = D.state();
+    const r = Object.assign({}, D.RC_DEF, CFG.receipt || {}, (st && st.settings && st.settings.rc) || {}, over || {});
+    Object.entries(D.RC_LIM).forEach(([k, [lo, hi]]) => { const n = +r[k]; r[k] = Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : D.RC_DEF[k]; });
+    if (!D.RC_TPLS.some((t) => t.id === r.tpl)) r.tpl = 'classic';
+    if (!['dash', 'solid', 'none'].includes(r.sep)) r.sep = 'dash';
+    return r;
+  };
+  const rcOpen = (r, opt) => `<div class="receipt${opt && opt.print ? ' print' : ''} rc--${r.tpl} rc-sep--${r.sep}${r.heavy ? ' rc--heavy' : ''}" style="--rc-w:${r.w};--rc-mx:${r.mx};--rc-mt:${r.mt};--rc-mb:${r.mb};--rc-fs:${r.fs}">`;
+  const rcHead = (r, full) => {
+    const src = r.img || (CFG.brand && CFG.brand.mark) || '';
+    const en = r.nameEn && D.STORE.nameEn;
+    return `<div class="rc-logo rc-c">${r.logo && src ? `<img class="rc-img" src="${D.esc(src)}" style="width:${r.logoW}mm" alt="">` : ''}${en ? `<b>${D.esc(D.STORE.nameEn)}</b>` : ''}<span${en ? '' : ' class="rc-big"'}>${D.esc(D.STORE.sellerAr)}</span>${full && r.addr && D.STORE.addr ? `<small>${D.esc(D.STORE.addr)}</small>` : ''}</div>`;
+  };
   D.receiptHTML = (o, opt) => {
     opt = opt || {};
     const s = D.state();
+    const r = D.rc(opt.rc);
     const z = D.tlv(o);
     const c = D.calc(s, o.lines, o.disc);
     const vatOn = D.orderVat(o);
-    const lines = o.lines.map((l) => {
-      const p = D.prod(l.pid);
+    const table = r.tpl === 'table', compact = r.tpl === 'compact', wide = r.w >= 70;
+    const subOf = (l, p) => {
       const mods = D.modText(l).join(' · ');
-      return `<div class="rc-line"><b>${l.qty} × ${D.esc(p.ar)}</b><span class="p">${D.fmt(l.total)}</span><small>${D.esc(p.en)}${mods ? ' — ' + D.esc(mods) : ''}${l.reward ? ' · هدية الولاء' : l.disc ? ` · خصم ${l.disc}%` : ''}</small></div>`;
+      const a = [r.itemEn ? D.esc(p.en) : '', D.esc(mods)].filter(Boolean).join(' — ');
+      return [a, l.reward ? 'هدية الولاء' : l.disc ? `خصم ${l.disc}%` : ''].filter(Boolean).join(' · ');
+    };
+    const lines = o.lines.map((l) => {
+      const p = D.prod(l.pid); const sub = subOf(l, p);
+      if (table) return `<div class="rc-tr${wide ? '' : ' rc-t3'}"><b>${D.esc(p.ar)}</b><span>${l.qty}</span>${wide ? `<span>${D.fmt(l.total / l.qty)}</span>` : ''}<span>${D.fmt(l.total)}</span>${sub ? `<small>${sub}</small>` : ''}</div>`;
+      return `<div class="rc-line"><b>${l.qty} × ${D.esc(p.ar)}</b><span class="p">${D.fmt(l.total)}</span>${sub ? `<small>${sub}</small>` : ''}</div>`;
     }).join('');
     const pays = o.pays.map((p) => `<div class="rc-kv"><span>${D.PAY[p.m].ar}</span><span>${D.fmt(p.a)}</span></div>`).join('');
     const st = o.cust ? s.customers.find((x) => x.id === o.cust) : null;
-    return `<div class="receipt${opt.print ? ' print' : ''}">
-      <div class="rc-logo rc-c"><b>${D.STORE.nameEn}</b><span>${D.STORE.sellerAr}</span><small>${D.STORE.addr}</small></div>
-      ${D.TRAIN ? '<div class="rc-c rc-t">— تدريب · Training —</div>' : ''}
-      <div class="rc-c">${vatOn && D.STORE.vat ? `<div>الرقم الضريبي: <span class="mono">${D.STORE.vat}</span></div>` : ''}${D.STORE.cr ? `<div>س.ت: <span class="mono">${D.STORE.cr}</span></div>` : ''}${D.STORE.phone ? `<div>هاتف: <span class="mono">${D.esc(D.STORE.phone)}</span></div>` : ''}</div>
-      <hr class="rc-hr"><div class="rc-c rc-t">${vatOn ? 'فاتورة ضريبية مبسطة' : 'إيصال بيع'}<br><span class="mono" style="font-weight:500;font-size:11px">${vatOn ? 'Simplified Tax Invoice' : 'Sales Receipt'}</span></div><hr class="rc-hr">
-      <div class="rc-kv"><span>رقم الفاتورة</span><span>${o.inv}</span></div>
+    const who = o.ch === 'kiosk' && !o.staff ? 'الكشك · دفع ذاتي' : `${D.esc(D.staff(o.staff).short)} · كاشير ${o.reg}`;
+    const kind = `${o.ch !== 'counter' ? D.CH[o.ch].ar : D.TYPES[o.type].ar}${o.table ? ' ' + D.esc(o.table) : ''}`;
+    const info = `${vatOn && D.STORE.vat ? `<div>الرقم الضريبي: <span class="mono">${D.esc(D.STORE.vat)}</span></div>` : ''}${r.cr && D.STORE.cr ? `<div>س.ت: <span class="mono">${D.esc(D.STORE.cr)}</span></div>` : ''}${r.phone && D.STORE.phone ? `<div>هاتف: <span class="mono">${D.esc(D.STORE.phone)}</span></div>` : ''}${r.head ? `<div dir="auto">${D.esc(r.head)}</div>` : ''}`;
+    const meta = compact
+      ? `<div class="rc-c rc-meta"><span class="mono">${o.inv}${r.bigNo ? '' : ' · #' + o.no}</span><br><span class="mono">${D.dateNum(o.ts)} ${D.time24(o.ts)}</span>${r.cashier || r.type ? `<br>${[r.cashier ? who : '', r.type ? kind : ''].filter(Boolean).join(' · ')}` : ''}</div>`
+      : `<div class="rc-kv"><span>رقم الفاتورة</span><span>${o.inv}</span></div>
       <div class="rc-kv"><span>التاريخ</span><span>${D.dateNum(o.ts)} ${D.time24(o.ts)}</span></div>
-      <div class="rc-kv"><span>رقم الطلب</span><span>#${o.no}</span></div>
-      <div class="rc-kv"><span>الكاشير</span><span style="font-family:var(--f)">${o.ch === 'kiosk' && !o.staff ? 'الكشك · دفع ذاتي' : `${D.esc(D.staff(o.staff).short)} · كاشير ${o.reg}`}</span></div>
-      <div class="rc-kv"><span>نوع الطلب</span><span style="font-family:var(--f)">${o.ch !== 'counter' ? D.CH[o.ch].ar : D.TYPES[o.type].ar}${o.table ? ' ' + o.table : ''}</span></div>
-      <hr class="rc-hr">${lines}<hr class="rc-hr">
+      ${r.bigNo ? '' : `<div class="rc-kv"><span>رقم الطلب</span><span>#${o.no}</span></div>`}
+      ${r.cashier ? `<div class="rc-kv"><span>الكاشير</span><span style="font-family:var(--f)">${who}</span></div>` : ''}
+      ${r.type ? `<div class="rc-kv"><span>نوع الطلب</span><span style="font-family:var(--f)">${kind}</span></div>` : ''}`;
+    return `${rcOpen(r, opt)}
+      ${rcHead(r, true)}
+      ${D.TRAIN ? '<div class="rc-c rc-t">— تدريب · Training —</div>' : ''}${opt.sample ? '<div class="rc-c rc-t">— تجربة شكل · Sample —</div>' : ''}
+      ${info ? `<div class="rc-c">${info}</div>` : ''}
+      <hr class="rc-hr"><div class="rc-c rc-t">${vatOn ? 'فاتورة ضريبية مبسطة' : 'إيصال بيع'}${compact ? '' : `<br><span class="mono rc-sub">${vatOn ? 'Simplified Tax Invoice' : 'Sales Receipt'}</span>`}</div><hr class="rc-hr">
+      ${r.bigNo ? `<div class="rc-no"><small>رقم الطلب · Order</small><b>#${o.no}</b></div>` : ''}
+      ${meta}
+      <hr class="rc-hr">${table ? `<div class="rc-th${wide ? '' : ' rc-t3'}"><span>الصنف</span><span>الكمية</span>${wide ? '<span>السعر</span>' : ''}<span>الإجمالي</span></div>` : ''}${lines}<hr class="rc-hr">
       ${c.lineDisc ? `<div class="rc-kv"><span>خصم الأصناف</span><span>-${D.fmt(c.lineDisc)}</span></div>` : ''}
       ${c.disc ? `<div class="rc-kv"><span>خصم الفاتورة${o.disc.type === 'pct' ? ' ' + o.disc.v + '%' : ''}</span><span>-${D.fmt(c.disc)}</span></div>` : ''}
       ${vatOn ? `<div class="rc-kv"><span>الإجمالي قبل الضريبة</span><span>${D.fmt(o.net)}</span></div>
       <div class="rc-kv"><span>ضريبة القيمة المضافة 15%</span><span>${D.fmt(o.vat)}</span></div>` : ''}
-      <div class="rc-kv rc-tot"><span>${vatOn ? 'الإجمالي شامل الضريبة' : 'الإجمالي'}</span><span>${D.fmt(o.total)}</span></div><div class="rc-c" style="font-size:10px;color:#666">المبالغ بالريال السعودي</div>
+      <div class="rc-kv rc-tot"><span>${vatOn ? 'الإجمالي شامل الضريبة' : 'الإجمالي'}</span><span>${D.fmt(o.total)}</span></div>${r.cur ? '<div class="rc-c rc-cur">المبالغ بالريال السعودي</div>' : ''}
       <hr class="rc-hr">${pays}${o.cash ? `<div class="rc-kv"><span>المدفوع كاش</span><span>${D.fmt(o.cash.tendered)}</span></div><div class="rc-kv"><span>الباقي</span><span>${D.fmt(o.cash.change)}</span></div>` : ''}
-      ${o.refunds && o.refunds.length ? `<hr class="rc-hr">${o.refunds.map((r) => `<div class="rc-kv"><span>${D.noteName(o).ar} ${r.cn}</span><span>-${D.fmt(r.a)}</span></div>`).join('')}` : ''}
+      ${o.refunds && o.refunds.length ? `<hr class="rc-hr">${o.refunds.map((x) => `<div class="rc-kv"><span>${D.noteName(o).ar} ${x.cn}</span><span>-${D.fmt(x.a)}</span></div>`).join('')}` : ''}
       ${vatOn ? `<div class="rc-qr">${D.qrSVG(z.b64)}<small>امسح للتحقق — هيئة الزكاة والضريبة والجمارك</small></div>` : ''}
-      ${st ? `<div class="rc-foot">${D.esc(st.name.split(' ')[0])}، رصيدك ${st.stamps} من ${s.settings.loyalNeed} أختام${st.rewards ? ` · لديك ${st.rewards} مشروب هدية` : ''}</div>` : ''}
-      <div class="rc-foot">${D.esc(CFG.thanks || 'شكرًا لزيارتكم')} ${opt.copy ? '· <b>نسخة</b>' : ''}${CFG.poweredBy === false ? '' : '<br>Powered by <b>DARJ</b>'}</div>
+      ${st && r.loyal ? `<div class="rc-foot">${D.esc(st.name.split(' ')[0])}، رصيدك ${st.stamps} من ${s.settings.loyalNeed} أختام${st.rewards ? ` · لديك ${st.rewards} مشروب هدية` : ''}</div>` : ''}
+      ${r.note ? `<div class="rc-foot" dir="auto">${D.esc(r.note)}</div>` : ''}
+      <div class="rc-foot">${r.thanks ? D.esc(r.foot || CFG.thanks || 'شكرًا لزيارتكم') : ''} ${opt.copy ? '· <b>نسخة</b>' : ''}${CFG.poweredBy === false ? '' : '<br>Powered by <b>DARJ</b>'}</div>
     </div>`;
   };
   D.creditHTML = (o, r, opt) => {
     opt = opt || {};
     const s = D.state();
+    const rc = D.rc();
     const iso = new Date(r.ts).toISOString().replace(/\.\d{3}Z$/, 'Z');
     const vatOn = D.orderVat(o);
     const enc = new TextEncoder(); const bytes = [];
@@ -1015,10 +1079,10 @@
     let bin = ''; bytes.forEach((b) => { bin += String.fromCharCode(b); });
     const rows = r.lines.map(({ i, q }) => { const l = o.lines[i]; const p = D.prod(l.pid); return `<div class="rc-line"><b>${q} × ${D.esc(p.ar)}</b><span class="p">${D.fmt(l.total / l.qty * q)}</span><small>${D.esc(p.en)}${l.reward ? ' · هدية الولاء' : ''}</small></div>`; }).join('');
     const kv = (a, b) => `<div class="rc-kv"><span>${a}</span><span>${b}</span></div>`;
-    return `<div class="receipt${opt.print ? ' print' : ''}">
-      <div class="rc-logo rc-c"><b>${D.STORE.nameEn}</b><span>${D.STORE.sellerAr}</span></div>
+    return `${rcOpen(rc, opt)}
+      ${rcHead(rc, false)}
       ${vatOn && D.STORE.vat ? `<div class="rc-c">الرقم الضريبي: <span class="mono">${D.STORE.vat}</span></div>` : ''}
-      <hr class="rc-hr"><div class="rc-c rc-t">${vatOn ? 'إشعار دائن' : 'إشعار مرتجع'}<br><span class="mono" style="font-weight:500;font-size:11px">${vatOn ? 'Credit Note' : 'Refund Note'}</span></div><hr class="rc-hr">
+      <hr class="rc-hr"><div class="rc-c rc-t">${vatOn ? 'إشعار دائن' : 'إشعار مرتجع'}<br><span class="mono rc-sub">${vatOn ? 'Credit Note' : 'Refund Note'}</span></div><hr class="rc-hr">
       ${kv('رقم الإشعار', r.cn)}${kv('مرجع الفاتورة', o.inv)}${kv('التاريخ', `${D.dateNum(r.ts)} ${D.time24(r.ts)}`)}${kv('السبب', `<span style="font-family:var(--f)">${D.esc(r.reason)}</span>`)}
       <hr class="rc-hr">${rows}<hr class="rc-hr">
       ${vatOn ? kv('المبلغ قبل الضريبة', D.fmt(r.a - (r.vat || 0))) + kv('ضريبة القيمة المضافة 15%', D.fmt(r.vat || 0)) : ''}
@@ -1032,9 +1096,9 @@
   D.zHTML = (sh, st) => {
     const by = st.by;
     const row = (a, b) => `<div class="rc-kv"><span>${a}</span><span>${b}</span></div>`;
-    return `<div class="receipt print">
-      <div class="rc-logo rc-c"><b>${D.STORE.nameEn}</b><span>${D.STORE.sellerAr}</span></div>
-      <hr class="rc-hr"><div class="rc-c rc-t">${sh.close ? 'تقرير Z — إقفال وردية' : 'تقرير X — منتصف الوردية'}<br><span class="mono" style="font-weight:500;font-size:11px">${sh.z || 'X-' + D.time24(Date.now()).replace(':', '')}</span></div><hr class="rc-hr">
+    return `${rcOpen(D.rc(), { print: true })}
+      ${rcHead(D.rc(), false)}
+      <hr class="rc-hr"><div class="rc-c rc-t">${sh.close ? 'تقرير Z — إقفال وردية' : 'تقرير X — منتصف الوردية'}<br><span class="mono rc-sub">${sh.z || 'X-' + D.time24(Date.now()).replace(':', '')}</span></div><hr class="rc-hr">
       ${row('الكاشير', `<span style="font-family:var(--f)">${D.esc(D.staff(sh.user).short)} · كاشير ${sh.reg}</span>`)}
       ${row('من', `${D.dateNum(sh.open)} ${D.time24(sh.open)}`)}${row('إلى', sh.close ? `${D.dateNum(sh.close)} ${D.time24(sh.close)}` : 'مفتوحة')}
       <hr class="rc-hr">${row('عدد الفواتير', st.count)}${row('إجمالي المبيعات', D.fmt(st.total))}${D.vatOn() || st.vat ? row('منها ضريبة 15%', D.fmt(st.vat)) : ''}${row('الخصومات', D.fmt(st.disc))}${row('المرتجعات', D.fmt(st.refunds))}
@@ -1153,24 +1217,53 @@
   D.head = (t, s) => `<div class="modal__h"><div><h2>${t}</h2>${s ? `<p>${s}</p>` : ''}</div><button class="icon-btn" data-close aria-label="إغلاق">${D.icon('x')}</button></div>`;
 
   // موافقة مشرف/مدير بالـPIN — بترجع المستخدم اللي وافق أو null
-  D.approve = (perm, why, current) => new Promise((resolve) => {
+  // حماية الـPIN في التشغيل الحقيقي: 5 محاولات غلط ورا بعض = قفل دقيقة، وبتتسجل في سجل الحركات.
+  // عدّاد الدخول منفصل عن عدّاد الموافقات، فالدخول الصحيح مايصفّرش محاولات تخمين PIN المشرف.
+  const PIN_KEY = BASE + ':pinlock';
+  let pinMem = null;
+  const pinAll = () => { if (!pinMem) { try { pinMem = JSON.parse(localStorage.getItem(PIN_KEY) || 'null'); } catch (e) { /* */ } pinMem = pinMem || {}; } return pinMem; };
+  const pinPut = () => { try { localStorage.setItem(PIN_KEY, JSON.stringify(pinMem)); } catch (e) { /* */ } };
+  D.pinWait = (kind) => (D.REAL ? Math.max(0, ((pinAll()[kind] || {}).until || 0) - Date.now()) : 0);
+  D.pinOk = (kind) => { if (!D.REAL) return; pinAll()[kind] = { n: 0, until: 0 }; pinPut(); };
+  D.pinFail = (kind, user, what) => {
+    if (!D.REAL) return 0;
+    const all = pinAll();
+    const x = all[kind] = all[kind] || { n: 0, until: 0 };
+    x.n += 1;
+    let wait = 0;
+    if (x.n >= 5) { x.n = 0; wait = 60000; x.until = Date.now() + wait; D.mutate(() => D.log(user || null, 'pin', `5 محاولات PIN خاطئة متتالية — ${what}`, null, 'risk'), 'pin'); }
+    pinPut();
+    return wait;
+  };
+  D.pinMsg = (ms) => `محاولات كثيرة — حاول بعد ${Math.ceil(ms / 1000)} ثانية`;
+  D.approve = (perm, why, current, opt) => new Promise((resolve) => {
+    opt = opt || {};
     if (D.can(current, perm) === 1) { resolve(D.staff(current)); return; }
     const p = D.PERMS.find((x) => x.id === perm);
+    const label = opt.label || (p ? p.ar : '');
     let pin = '';
-    const m = D.modal(`${D.head('موافقة المشرف', `${p ? p.ar : ''}${why ? ' — ' + D.esc(why) : ''}`)}
+    const m = D.modal(`${D.head('موافقة المشرف', `${D.esc(label)}${why ? ' — ' + D.esc(why) : ''}`)}
       <div class="modal__b"><div class="blind">${D.icon('shield', 'sm')} هذه العملية تحتاج رمز PIN لمشرف أو مدير، وستُسجَّل في سجل الحركات باسمه.</div>
       <div class="pin__dots" style="margin-top:18px">${'<i></i>'.repeat(4)}</div>
       <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-n="${n}">${n}</button>`).join('')}<button class="fn" data-n="c">مسح</button><button data-n="0">0</button><button class="fn" data-n="b">رجوع</button></div>
+      <p class="pin__hint" data-pinmsg style="color:var(--red);min-height:16px;margin-top:8px"></p>
       ${D.REAL ? '' : '<p class="pin__hint">للتجربة: فيصل (مشرف) <b>2222</b> · نورة (مديرة) <b>9999</b></p>'}</div>`, { cls: 'modal--sm', onClose: () => resolve(null) });
     const dots = m.querySelector('.pin__dots');
     const paint = () => dots.querySelectorAll('i').forEach((d, i) => d.classList.toggle('on', i < pin.length));
+    const say = (t) => { const el = m.querySelector('[data-pinmsg]'); if (el) el.textContent = t || ''; };
     const press = (n) => {
+      const held = D.pinWait('approve');
+      if (held) { pin = ''; paint(); say(D.pinMsg(held)); return; }
+      say('');
       if (n === 'c') pin = ''; else if (n === 'b') pin = pin.slice(0, -1); else if (pin.length < 4) pin += n;
       paint();
       if (pin.length === 4) {
         const u = D.STAFF.find((s) => s.pin === pin && D.can(s, perm) === 1);
-        if (u) { setTimeout(() => { resolve(u); m.close('ok'); }, 140); }
-        else { dots.classList.add('err'); setTimeout(() => { dots.classList.remove('err'); pin = ''; paint(); }, 420); }
+        if (u) { D.pinOk('approve'); setTimeout(() => { resolve(u); m.close('ok'); }, 140); }
+        else {
+          dots.classList.add('err'); setTimeout(() => { dots.classList.remove('err'); pin = ''; paint(); }, 420);
+          const w = D.pinFail('approve', current || null, `موافقة: ${label}`); if (w) say(D.pinMsg(w));
+        }
       }
     };
     m.querySelectorAll('[data-n]').forEach((b) => b.addEventListener('click', () => press(b.dataset.n)));
@@ -1295,7 +1388,15 @@
     let root = document.querySelector('.print-root');
     if (!root) { root = document.createElement('div'); root.className = 'print-root'; document.body.appendChild(root); }
     root.innerHTML = html.replace('receipt print', 'receipt');
-    setTimeout(() => window.print(), 60);
+    // مقاس الورقة من إعداد الفاتورة (عرض الرول) — الطول تلقائي
+    const rc = root.querySelector('.receipt');
+    const w = (rc && parseFloat(rc.style.getPropertyValue('--rc-w'))) || 80;
+    let pg = document.getElementById('rcPage');
+    if (!pg) { pg = document.createElement('style'); pg.id = 'rcPage'; document.head.appendChild(pg); }
+    pg.textContent = `@media print{@page{size:${w}mm auto;margin:0}}`;
+    const img = root.querySelector('img.rc-img');
+    const fire = () => setTimeout(() => window.print(), 60);
+    if (img && !img.complete) { let done = false; const go = () => { if (!done) { done = true; fire(); } }; img.addEventListener('load', go); img.addEventListener('error', go); setTimeout(go, 1500); } else fire();
   };
 
   /* ---------- live loop ---------- */
@@ -1307,6 +1408,8 @@
     if (D.REAL) {
       const sync = () => { const off = !navigator.onLine; if (!!D.state().settings.offline !== off) D.goOffline(off, null); };
       window.addEventListener('online', sync); window.addEventListener('offline', sync); setTimeout(sync, 800);
+      try { if (localStorage.getItem(BASE + ':trainEnd')) { localStorage.removeItem(BASE + ':trainEnd'); D.mutate(() => D.log(null, 'settings', 'رجوع من وضع التدريب إلى التشغيل الحقيقي', null, 'warn'), 'set'); } } catch (e) { /* */ }
+      setTimeout(D.retryArchive, 5000); setInterval(D.retryArchive, 10 * 60000);
     }
   };
 })();

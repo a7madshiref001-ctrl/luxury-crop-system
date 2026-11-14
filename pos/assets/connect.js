@@ -73,7 +73,7 @@
         last.note = [last.note, `إضافة: ${qty}× ${it.item_name}`].filter(Boolean).join(' · ');
         return;
       }
-      const p = D.prod(it.item_id);
+      const p = D.has(it.item_id) && it.item_id !== SITE_ITEM ? D.prod(it.item_id) : null;
       if (p) lines.push({ pid: p.id, qty, mods: D.defMods(p), note: it.note || '', fixed: unit });
       else lines.push({ pid: SITE_ITEM, qty, mods: {}, note: [it.item_name, it.note].filter(Boolean).join(' · '), fixed: unit });
     });
@@ -101,17 +101,39 @@
     const c = await init();
     const r = await c.from('products').select('id,price,sold_out,is_active');
     if (r.error) return;
+    // أول مزامنة للصنف: الموقع هو المرجع. بعد كده بيتطبّق بس اللي اتغيّر في الموقع نفسه من آخر مرة،
+    // فتعديل الكاشير (صنف خلص، سعر اتعدّل) مايترجعش لوحده، والسعر اللي رجع لأصله في الموقع بيرجع هنا كمان.
+    const st = D.state();
+    const seen = st.siteSeen || {};
+    const next = {};
+    const ch = [];
+    r.data.forEach((p) => {
+      if (p.id === SITE_ITEM || !D.has(p.id)) return;
+      const mine = D.prod(p.id);
+      const price = Number(p.price) || 0;
+      const on = !p.sold_out && p.is_active !== false;
+      const was = seen[p.id];
+      const cur = st.prices[p.id] != null ? st.prices[p.id] : mine.price;
+      if (!was) {
+        if (price && price !== mine.price && cur !== price) ch.push(['price', p.id, price]);
+        if ((st.avail[p.id] !== false) !== on) ch.push(['avail', p.id, on]);
+      } else {
+        if (price && price !== was[0] && cur !== price) ch.push(['price', p.id, price]);
+        if (on !== !!was[1] && (st.avail[p.id] !== false) !== on) ch.push(['avail', p.id, on]);
+      }
+      next[p.id] = [price, on ? 1 : 0];
+    });
+    if (!ch.length && JSON.stringify(next) === JSON.stringify(seen)) return 0;
     D.mutate((s) => {
-      let n = 0;
-      r.data.forEach((p) => {
-        const mine = D.prod(p.id); if (!mine) return;
-        const price = Number(p.price);
-        if (price && price !== mine.price && s.prices[p.id] !== price) { s.prices[p.id] = price; n++; }
-        const on = !p.sold_out && p.is_active !== false;
-        if ((s.avail[p.id] !== false) !== on) { s.avail[p.id] = on; n++; }
+      ch.forEach(([k, id, v]) => {
+        if (k === 'avail') s.avail[id] = v;
+        else if (v === D.prod(id).price) delete s.prices[id];
+        else s.prices[id] = v;
       });
-      D.log(null, 'sync', `مزامنة المنيو الأونلاين — ${n} تحديث في الأسعار والتوفّر`);
+      s.siteSeen = next;
+      if (ch.length || !Object.keys(seen).length) D.log(null, 'sync', `مزامنة المنيو الأونلاين — ${ch.length} تحديث في الأسعار والتوفّر`);
     }, 'sync');
+    return ch.length;
   }
   // حالة الطلب بتتحفظ محليًا وتتبعت لما النت يرجع
   function queueStatus(id, st) { const q = read(OUT_KEY, []); q.push({ id, st }); save(OUT_KEY, q); soon(); }
@@ -195,6 +217,7 @@
     await pull();
     channel = c.channel('pos-orders').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, () => setTimeout(() => pull().catch(() => {}), 600)).subscribe();
     poll = setInterval(() => { if (navigator.onLine) pull().catch(() => {}); }, C.pollMs || 5000);
+    setInterval(() => { if (navigator.onLine && cloud.on) syncCatalog().catch(() => {}); }, C.catalogMs || 5 * 60000); // أسعار وتوفّر الموقع طول اليوم، مش عند الفتح بس
     pump();
   }
   async function start(email) {
@@ -283,7 +306,7 @@
     enabled: !!C.enabled,
     panel(el, me) { box = el; boxMe = me; if (!el.dataset.cx) { el.dataset.cx = '1'; el.addEventListener('click', onBox); } paint(); },
     status: () => Object.assign({}, cloud),
-    test: /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? { mapOrder, flushSales, flushState, pump, start, restore, reset() { client = null; started = false; paused = false; lastRev = -1; lastDay = ''; lastState = 0; fails = 0; } } : null,
+    test: /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? { mapOrder, syncCatalog, flushSales, flushState, pump, start, restore, reset() { client = null; started = false; paused = false; lastRev = -1; lastDay = ''; lastState = 0; fails = 0; } } : null,
   };
 
   // لو فيه جلسة محفوظة، الربط بيرجع لوحده

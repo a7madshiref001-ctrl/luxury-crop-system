@@ -9,6 +9,7 @@
     ar: { new: 'جديد', make: 'قيد التحضير', ready: 'جاهز', start: 'ابدأ التحضير', done: 'جاهز', picked: 'تم التسليم', empty: 'لا توجد طلبات', allday: 'المطلوب الآن', wait: 'بانتظار', back: 'رجوع', with: 'مع الطلب', ok: 'جاهز', mk: 'قيد التحضير', q: 'لم يبدأ' },
     en: { new: 'New', make: 'Making', ready: 'Ready', start: 'Start', done: 'Ready', picked: 'Picked up', empty: 'Nothing here', allday: 'All-day', wait: 'Waiting for', back: 'Undo', with: 'With order', ok: 'ready', mk: 'making', q: 'queued' },
   };
+  const clock = () => Date.now() + (D.skew || 0); // بتوقيت الكاشير، حتى لو ساعة الشاشة غلط
   const stName = (st, lang) => (D.STATIONS[st] ? D.STATIONS[st][lang === 'en' ? 'en' : 'ar'] : '');
   const age = (o, at, now) => {
     const stage = D.stStage(o, at, now);
@@ -86,7 +87,7 @@
     let first = true;
     function draw() {
       const S = D.state();
-      const now = Date.now();
+      const now = clock();
       const t = T[lang];
       const act = S.orders.filter((o) => (o.status === 'prep' || o.status === 'ready') && D.forStation(S, o, at));
       const cols = { new: [], make: [], ready: [] };
@@ -111,15 +112,16 @@
       if (!b) return;
       const op = b.dataset.op, id = b.dataset.id;
       const r = D.act(op, { id, st: at });
+      if (D.SAT && window.DARJ_LINK && !window.DARJ_LINK.hubOnline()) return; // الحركة ما اتسجلتش، فمفيش نغمة تأكيد
       if (op === 'ready') { const o = D.state().orders.find((x) => x.id === id); if (o && o.status === 'ready') D.sound('ready'); else D.sound('ok'); if (r && typeof r.then === 'function') r.then(() => {}); }
     });
     const off = D.on((why) => { if (why !== 'cart') draw(); });
     const timer = setInterval(() => {
-      const now = Date.now(); const S = D.state();
+      const now = clock(); const S = D.state();
       el.querySelectorAll('[data-t]').forEach((n) => { const o = S.orders.find((x) => x.id === n.dataset.t); if (o) n.textContent = D.mmss(age(o, at, now)); });
     }, 1000);
     const slow = setInterval(draw, 15000);
-    const loop = opt.sound === false ? 0 : D.alertLoop(() => { const S = D.state(); const now = Date.now(); return S.orders.some((o) => o.status === 'prep' && D.forStation(S, o, at) && D.stStage(o, at, now) === 'new'); });
+    const loop = opt.sound === false ? 0 : D.alertLoop(() => { const S = D.state(); const now = clock(); return S.orders.some((o) => o.status === 'prep' && D.forStation(S, o, at) && D.stStage(o, at, now) === 'new'); });
     draw();
     return {
       setLang(l) { lang = l; draw(); },

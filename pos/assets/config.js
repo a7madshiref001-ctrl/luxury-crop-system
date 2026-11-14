@@ -16,11 +16,13 @@ window.DARJ_CONFIG = {
   poweredBy: false,
   vatOn: false, // غير مسجل في الضريبة: إيصال بيع من غير ضريبة ولا QR. يتغيّر من الإعدادات لو اتسجل.
   board: false, // مفيش شاشة حالة طلبات للزبون دلوقتي: الكشك بيقول «سننادي على رقمك»
+  perms: { void: { cashier: 1 } }, // حذف صنف أو إلغاء الطلب قبل الدفع من غير PIN المشرف — الحركة لسه بتتسجل في السجل باسم الكاشير
+  refundTo: 'cash', // المرتجع المعتاد كاش من الدرج — المحل ما بيرجّعش على جهاز الشبكة («نفس طريقة الدفع» لسه اختيار متاح)
   // أصناف الجولات في وضع التدريب
   tour: { drink: '170284', drink2: '170283', food: '170309', food2: '193000', dessert: '170313', mod: 'addon_hot_1', drinkName: 'سبانش لاتيه', foodName: 'كوكيز فانيليا', modName: 'الحليب النباتي' },
   connect: {
-    enabled: false,
-    version: '6',
+    enabled: true,
+    version: '12',
     url: 'https://qckjfyupxwctfizqdbxe.supabase.co',
     key: 'sb_publishable_zN4rosy4qTS9Nbyx1iFxYw_Azx-lYnc', // مفتاح عام (نفس اللي في الموقع) — الحماية في RLS
     pollMs: 5000,
