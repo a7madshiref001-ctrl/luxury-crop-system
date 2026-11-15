@@ -13,6 +13,7 @@
   let autoLocked = false; // الشاشة اتقفلت لوحدها: جرس الطلبات الجديدة يفضل شغال
   try { me = sessionStorage.getItem('darj:me'); } catch (e) { /* */ }
   const can = (perm) => (me ? D.can(me, perm) : 0);
+  const prepSt = (id) => (D.PREP_ROLES || {})[D.staff(id).role] || ''; // 'bar' للباريستا · 'kitchen' للشيف
   const approverId = (u) => (u && u.id !== me ? u.id : null);
   let lang = 'ar';
   const tr = (ar, en) => (lang === 'en' ? en : ar);
@@ -197,7 +198,8 @@
       document.removeEventListener('keydown', key);
       D.mutate(() => D.log(me, 'login', `تسجيل دخول — كاشير 1 (${D.ROLES[u.role].ar})`), 'login');
       el.remove();
-      const target = after && D.can(me, ROUTES.find((r) => r.id === after).perm) ? after : (u.role === 'barista' ? 'kds' : can(ROUTES.find((r) => r.id === route).perm) ? route : 'sell');
+      if (prepSt(me)) kdsSt = prepSt(me);
+      const target = after && D.can(me, ROUTES.find((r) => r.id === after).perm) ? after : (prepSt(me) ? 'kds' : can(ROUTES.find((r) => r.id === route).perm) ? route : 'sell');
       go(target);
       D.toast(`أهلًا ${u.short}`, `تم الدخول كـ${D.ROLES[u.role].ar}`, { ic: 'user' });
       if (!D.REAL) setTimeout(wantGuide ? openGuide : nudge, 900);
@@ -993,7 +995,7 @@
       <div class="modal__b"><div class="grid g2" style="align-items:start">
         <div class="grid" style="gap:12px">
           ${D.canRefund(o) ? `<button class="btn btn--danger btn--lg btn--block" id="rf">${I('refund')}${bi('Refund / Cancel', 'صنف واحد أو الطلب كله')}</button>` : `<div class="blind">${statusPill(o)} <span>${o.status === 'new' ? 'الطلب لم يُقبل بعد — اقبله أو ارفضه من تبويب Online' : 'لا يوجد ما يمكن إرجاعه من هذا الطلب'}</span></div>`}
-          <div class="card" style="padding:14px"><span class="label">Timeline · المراحل</span><div class="tl">${step('Order · تسجيل الطلب', o.ts, 1)}${step('Barista · وصل للباريستا', o.tsAcc, o.tsAcc)}${o.cancelled ? step('Cancelled · أُلغي', o.tsDone, 1) : step('Ready · جاهز', o.tsReady, o.tsReady) + step('Picked up · تم التسليم', o.tsDone, o.tsDone)}</div></div>
+          <div class="card" style="padding:14px"><span class="label">Timeline · المراحل</span><div class="tl">${step('Order · تسجيل الطلب', o.ts, 1)}${step('Barista · وصل للباريستا', o.tsAcc, o.tsAcc)}${o.cancelled ? step('Cancelled · أُلغي', o.tsDone, 1) : step('Ready · جاهز', o.tsReady, o.tsReady) + step('Picked up · تم التسليم', o.tsDone, o.tsDone)}</div>${D.madeBy(o).length || o.doneBy ? `<div style="margin-top:10px;display:grid;gap:4px">${D.madeBy(o).map((x) => `<div class="set-row" style="padding:6px 0"><span><b>${D.STATIONS[x.st] ? D.STATIONS[x.st].en + ' · ' + D.STATIONS[x.st].ar : x.st}</b><small>حضّره ${esc(D.staff(x.by).name)}${x.start && x.ready ? ' · ' + D.mmss(x.ready - x.start) : ''}</small></span>${D.av(x.by)}</div>`).join('')}${o.doneBy ? `<div class="set-row" style="padding:6px 0"><span><b>Handed over · التسليم</b><small>سلّمه ${esc(D.staff(o.doneBy).name)}</small></span>${D.av(o.doneBy)}</div>` : ''}</div>` : ''}</div>
           <div class="card" style="padding:14px"><span class="label">Payment · الدفع</span>${o.pays.map((p) => `<div class="set-row" style="padding:8px 0"><span><b>${D.PAY[p.m].en} · ${D.PAY[p.m].ar}</b>${p.auth ? `<small class="mono">AUTH ${p.auth}</small>` : ''}</span>${money(p.a)}</div>`).join('')}
             ${(o.refunds || []).map((r, k) => `<div class="set-row" style="padding:8px 0"><span><b class="down">${D.noteName(o).en} · ${r.cn}</b><small>${esc(r.reason)} · ${D.time(r.ts)}${r.appr ? ' · وافق ' + esc(D.staff(r.appr).short) : ''}${r.parts ? ' · ' + r.parts.map((p) => D.PAY[p.m].ar).join(' + ') : ''}</small></span><span style="display:grid;justify-items:end;gap:4px"><span class="down">-${money(r.a)}</span>${r.lines ? `<button class="btn btn--soft btn--sm" data-cn="${k}">${bi('View', 'الإشعار')}</button>` : ''}</span></div>`).join('')}</div>
         </div>
@@ -1151,7 +1153,7 @@
     view.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px 0;flex-wrap:wrap"><div><span class="label">Stations · KDS</span><div class="h-en" style="font-size:28px" id="kT">${title[kdsSt][0]}</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><div class="seg" id="kst">${[['all', 'All', 'الكل', 'kds'], ['bar', 'Barista', 'الباريستا', 'cup'], ['kitchen', 'Kitchen', 'المطبخ', 'flame']].map(([k, en, ar, ic]) => `<button data-st="${k}" class="${kdsSt === k ? 'on' : ''}" title="${ar}">${I(ic, 'sm')} ${en}</button>`).join('')}</div>
       <div class="seg" id="kl"><button data-l="ar" class="${kdsLang === 'ar' ? 'on' : ''}">ع</button><button data-l="en" class="${kdsLang === 'en' ? 'on' : ''}">EN</button></div><a class="btn btn--ghost btn--sm" id="kOpen" href="${page}" target="_blank">${I('kds', 'sm')} شاشة مستقلة</a></div></div><div id="kdsm"></div>`;
-    const k = window.DARJ_KDS.mount($('#kdsm', view), { lang: kdsLang, sound: false, st: kdsSt });
+    const k = window.DARJ_KDS.mount($('#kdsm', view), { lang: kdsLang, sound: false, st: kdsSt, by: () => me });
     $('#kl', view).addEventListener('click', (e) => { const b = e.target.closest('[data-l]'); if (!b) return; kdsLang = b.dataset.l; $$('#kl button', view).forEach((x) => x.classList.toggle('on', x === b)); k.setLang(kdsLang); });
     $('#kst', view).addEventListener('click', (e) => { const b = e.target.closest('[data-st]'); if (!b) return; kdsSt = b.dataset.st; $$('#kst button', view).forEach((x) => x.classList.toggle('on', x === b)); k.setSt(kdsSt); $('#kT', view).textContent = title[kdsSt][0]; $('#kOpen', view).href = kdsSt === 'all' ? 'kds.html?st=bar' : 'kds.html?st=' + kdsSt; });
     return () => k.destroy();
@@ -1499,7 +1501,7 @@
   /* =====================================================================
      REPORTS
      ===================================================================== */
-  let rng = 'today';
+  let rng = 'today', invAll = false;
   const W_SUM = Object.values(D.HOUR_W).reduce((a, b) => a + b, 0);
   function synthDay(dayOffset) { // أيام قبل النهارده — أرقام ثابتة لكل يوم
     const bs = D.bizStart(Date.now()) - dayOffset * 864e5;
@@ -1556,6 +1558,19 @@
           </div></div>
         ${Object.keys(staff).length ? `<div class="card" style="margin-top:14px"><div class="card__h"><h3><span class="label">Team</span>المبيعات حسب الموظف اليوم</h3></div><div class="tbl-wrap" style="border:0"><table class="tbl"><thead><tr><th>الموظف</th><th class="r">الفواتير</th><th class="r">المبيعات</th></tr></thead><tbody>${Object.entries(staff).map(([u, x]) => `<tr><td><b>${esc(D.staff(u).name)}</b></td><td class="r num">${x.n}</td><td class="r nw">${money(x.v)}</td></tr>`).join('')}</tbody></table></div></div>` : ''}`;
       if (window.matchMedia('(max-width:900px)').matches) $('#r2', view).style.gridTemplateColumns = 'minmax(0,1fr)';
+    }
+    // فواتير اليوم كاملة (الأحدث فوق) ومين حضّر إيه — بتتحدّث مع كل فاتورة جديدة، حتى قبل أول فاتورة مدفوعة
+    if (rng === 'today') {
+      const invs = D.today(s).filter((o) => o.status !== 'new' || o.inv).slice().reverse();
+      const prep = {};
+      D.today(s).forEach((o) => D.madeBy(o).forEach((x) => { const k = x.by + '|' + x.st; const p = prep[k] = prep[k] || { by: x.by, st: x.st, n: 0, t: 0, tn: 0 }; p.n++; if (x.start && x.ready) { p.t += x.ready - x.start; p.tn++; } }));
+      const prepCard = Object.keys(prep).length ? `<div class="card" style="margin-top:14px"><div class="card__h"><h3><span class="label">Prep</span>التحضير حسب الموظف اليوم</h3></div><div class="tbl-wrap" style="border:0"><table class="tbl"><thead><tr><th>الموظف</th><th>الشاشة</th><th class="r">طلبات جهّزها</th><th class="r">متوسط التحضير</th></tr></thead><tbody>${Object.values(prep).sort((a, b) => b.n - a.n).map((p) => `<tr><td><b>${esc(D.staff(p.by).name)}</b><br><small class="muted">${(D.ROLES[D.staff(p.by).role] || {}).ar || ''}</small></td><td>${D.STATIONS[p.st] ? D.STATIONS[p.st].ar : p.st}</td><td class="r num">${p.n}</td><td class="r num">${p.tn ? D.mmss(p.t / p.tn) : '—'}</td></tr>`).join('')}</tbody></table></div></div>` : '';
+      const invCard = invs.length ? `<div class="card" style="margin-top:14px" id="rInv"><div class="card__h"><h3><span class="label">Invoices</span>فواتير اليوم</h3><span class="pill">${invs.length} فاتورة</span></div>
+        <div class="tbl-wrap" style="border:0;max-height:${invAll ? 'none' : '460px'};overflow:auto"><table class="tbl"><thead><tr><th>الوقت</th><th>الفاتورة</th><th>الطلب</th><th>المصدر</th><th>الأصناف</th><th>الدفع</th><th>الكاشير</th><th class="r">الإجمالي</th><th>الحالة</th></tr></thead>
+        <tbody>${(invAll ? invs : invs.slice(0, 15)).map((o) => `<tr class="click" data-o="${o.id}"><td class="nw en">${D.time(o.ts)}</td><td class="mono nw" style="font-size:12px">${o.inv || '—'}</td><td class="en"><b>#${o.no}</b></td><td class="nw">${D.CH[o.ch].ar}${o.table ? ' ' + o.table : ''}</td><td>${esc(o.lines.map((l) => `${l.qty}× ${D.prod(l.pid).ar}`).join('، '))}</td><td class="nw">${o.pays.map((p) => `<span class="pill">${D.PAY[p.m] ? D.PAY[p.m].ar : p.m}</span>`).join(' ') || '—'}</td><td class="nw">${esc(D.who(o).short)}</td><td class="r nw">${money(o.total)}</td><td class="nw">${statusPill(o)}</td></tr>`).join('')}</tbody></table></div>
+        ${invs.length > 15 ? `<button class="btn btn--ghost btn--block" id="rInvAll" style="margin-top:10px">${invAll ? bi('Show less', 'آخر 15 فاتورة فقط') : bi('Show all · ' + invs.length, 'اعرض كل فواتير اليوم')}</button>` : ''}</div>` : '';
+      view.insertAdjacentHTML('beforeend', prepCard + invCard);
+      if ($('#rInv', view)) $('#rInv', view).addEventListener('click', (e) => { if (e.target.closest('#rInvAll')) { invAll = !invAll; renderReports(view); return; } const row = e.target.closest('[data-o]'); if (row) orderDetail(row.dataset.o); });
     }
     $('#rg', view).addEventListener('click', (e) => { const b = e.target.closest('[data-r]'); if (!b) return; rng = b.dataset.r; renderReports(view); });
   }
@@ -1645,7 +1660,7 @@
     const u = id ? D.staff(id) : { name: '', role: 'cashier', pin: '' };
     const m = D.modal(`${D.head(bi(id ? 'Edit staff' : 'Add staff', id ? 'تعديل موظف' : 'إضافة موظف'), 'كل موظف يدخل برمز PIN خاص، وكل حركة تُسجَّل باسمه')}
       <div class="modal__b grid" style="gap:12px"><label class="field"><span>الاسم</span><input class="input" id="sName" value="${esc(u.name)}"></label>
-        <div class="picks" id="sRole">${['cashier', 'supervisor', 'manager', 'barista'].map((r) => `<button class="pickc${u.role === r ? ' on' : ''}" data-role="${r}">${bi(D.ROLES[r].en, D.ROLES[r].ar)}</button>`).join('')}</div>
+        <div class="picks" id="sRole">${['cashier', 'manager', 'barista', 'chef', 'supervisor'].map((r) => `<button class="pickc${u.role === r ? ' on' : ''}" data-role="${r}">${bi(D.ROLES[r].en, D.ROLES[r].ar)}<span class="sub">${{ cashier: 'البيع والدرج', manager: 'كل الصلاحيات', barista: 'شاشة الباريستا', chef: 'شاشة المطبخ', supervisor: 'موافقات وتقارير' }[r]}</span></button>`).join('')}</div>
         <label class="field"><span>PIN من 4 أرقام ${id ? '(اتركه فارغًا لو مش هتغيّره)' : ''}</span><input class="input mono" id="sPin" inputmode="numeric" maxlength="4" type="password"></label>
         ${id ? `<div class="set-row"><span><b>${u.off ? 'موقوف' : 'نشط'}</b><small>الموظف الموقوف لا يظهر في شاشة الدخول، وتبقى حركاته في السجل</small></span><button class="switch ${u.off ? '' : 'on'}" id="sOn"></button></div>` : ''}
         <div id="sErr"></div></div>
@@ -1677,10 +1692,10 @@
     const sevPill = (l) => `<span class="pill ${l.sev === 'risk' ? 'pill--red' : l.sev === 'warn' ? 'pill--amber' : ''}">${{ login: 'دخول', shift: 'وردية', payout: 'مصروف', nosale: 'فتح درج', avail: 'توفّر', void: 'حذف', price: 'سعر', disc: 'خصم', refund: 'مرتجع', waste: 'هالك', stock: 'مخزون', offline: 'اتصال', sync: 'مزامنة', team: 'فريق', collect: 'تحصيل', settings: 'إعدادات', pin: 'PIN', kiosk: 'الكشك' }[l.act] || l.act}</span>`;
     view.innerHTML = `<div class="vh"><div><span class="label">Team · permissions · audit log</span><h1>Who did what</h1><p>${D.LIVE ? 'كل موظف بصلاحيات دوره، وكل حركة حساسة تُسجَّل باسم صاحبها. هنا سجل اليوم، والأيام السابقة محفوظة في الأرشيف والنسخة الاحتياطية.' : 'كل موظف بصلاحيات دوره، وكل حركة حساسة تُسجَّل في سجل لا يمكن حذفه.'}</p></div></div>
       ${D.REAL ? `<div style="display:flex;justify-content:flex-end;margin:-6px 0 12px"><button class="btn btn--ink" id="addStaff">${I('plus', 'sm')}${bi('Add staff', 'إضافة موظف')}</button></div>` : ''}
-      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-bottom:16px">${D.STAFF.map((u) => { const sh = s.shifts.find((x) => x.user === u.id && !x.close); return `<div class="card" ${D.REAL ? `data-staff="${u.id}" style="padding:14px;display:flex;gap:12px;align-items:center;cursor:pointer;${u.off ? 'opacity:.5' : ''}"` : 'style="padding:14px;display:flex;gap:12px;align-items:center"'}>${D.av(u, 'lg')}<span><b>${esc(u.name)}</b><br><small class="muted">${D.ROLES[u.role].ar} · PIN ••••</small><br>${u.id === me ? '<span class="pill pill--go"><i class="dot"></i> على الكاشير الآن</span>' : sh ? `<span class="pill pill--blue">وردية مفتوحة · كاشير ${sh.reg}</span>` : u.role === 'barista' ? '<span class="pill">على البار</span>' : '<span class="pill">خارج الوردية</span>'}</span></div>`; }).join('')}</div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-bottom:16px">${D.STAFF.map((u) => { const sh = s.shifts.find((x) => x.user === u.id && !x.close); return `<div class="card" ${D.REAL ? `data-staff="${u.id}" style="padding:14px;display:flex;gap:12px;align-items:center;cursor:pointer;${u.off ? 'opacity:.5' : ''}"` : 'style="padding:14px;display:flex;gap:12px;align-items:center"'}>${D.av(u, 'lg')}<span><b>${esc(u.name)}</b><br><small class="muted">${D.ROLES[u.role].ar} · PIN ••••</small><br>${u.id === me ? '<span class="pill pill--go"><i class="dot"></i> على الكاشير الآن</span>' : sh ? `<span class="pill pill--blue">وردية مفتوحة · كاشير ${sh.reg}</span>` : u.role === 'barista' ? '<span class="pill">على البار</span>' : u.role === 'chef' ? '<span class="pill">في المطبخ</span>' : '<span class="pill">خارج الوردية</span>'}</span></div>`; }).join('')}</div>
       <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);align-items:start" id="tg">
-        <div class="card"><div class="card__h"><h3><span class="label">Permissions</span>الصلاحيات حسب الدور</h3></div><div class="tbl-wrap" style="border:0"><table class="tbl perm"><thead><tr><th>الصلاحية</th><th>كاشير</th><th>مشرف</th><th>مدير</th></tr></thead><tbody>
-          ${D.PERMS.map((p) => `<tr><td>${esc(p.ar)}</td>${['cashier', 'supervisor', 'manager'].map((r) => `<td>${p[r] === 1 ? `<span class="yes">${I('check', 'sm')}</span>` : p[r] === 'ask' ? '<span class="pill pill--amber" style="height:20px">بموافقة</span>' : `<span class="no">${I('x', 'sm')}</span>`}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>
+        <div class="card"><div class="card__h"><h3><span class="label">Permissions</span>الصلاحيات حسب الدور</h3></div><div class="tbl-wrap" style="border:0"><table class="tbl perm"><thead><tr><th>الصلاحية</th><th>كاشير</th><th>مشرف</th><th>مدير</th><th>باريستا</th><th>شيف</th></tr></thead><tbody>
+          ${D.PERMS.map((p) => `<tr><td>${esc(p.ar)}</td>${['cashier', 'supervisor', 'manager', 'barista', 'chef'].map((r) => `<td>${p[r] === 1 ? `<span class="yes">${I('check', 'sm')}</span>` : p[r] === 'ask' ? '<span class="pill pill--amber" style="height:20px">بموافقة</span>' : `<span class="no">${I('x', 'sm')}</span>`}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>
         <div class="card"><div class="card__h"><h3><span class="label">Audit log</span>سجل الحركات — اليوم</h3><span class="pill">${s.log.length} حركة</span></div>
           <div class="lockline">${I('lock', 'sm')} السجل للقراءة فقط: لا أحد يستطيع حذفه أو تعديله، حتى المدير.</div>
           <div class="cats" style="padding:0 0 10px" id="lf">${Object.entries(acts).map(([k, [en, l]]) => `<button class="chip ${lf === k ? 'on' : ''}" data-f="${k}">${bi(en, l)}</button>`).join('')}</div>
@@ -2434,7 +2449,8 @@
     D.state().orders.forEach((o) => { if (o.status === 'new') seenNew.add(o.id); });
     // الصلاحيات لازم تتراجع حتى لو الصفحة اتفتحت على لينك مباشر
     if (!VIEWS[route] || !ROUTES.some((x) => x.id === route)) route = 'sell';
-    if (me && D.STAFF.some((u) => u.id === me) && !can(ROUTES.find((x) => x.id === route).perm)) route = D.staff(me).role === 'barista' ? 'kds' : 'sell';
+    if (me && D.STAFF.some((u) => u.id === me) && !can(ROUTES.find((x) => x.id === route).perm)) route = prepSt(me) ? 'kds' : 'sell';
+    if (me && D.STAFF.some((u) => u.id === me) && prepSt(me)) { kdsSt = prepSt(me); if (!location.hash) route = 'kds'; }
     shell();
     D.on(onChange);
     setInterval(() => { if (me) chrome(); }, 30000);
@@ -2450,7 +2466,7 @@
       me = null; autoLocked = true; try { sessionStorage.removeItem('darj:me'); } catch (er) { /* */ }
       closePops(); lockScreen(route);
     }, 10000);
-    if (!me || (D.REAL && !S().setup) || (me && !D.STAFF.some((u) => u.id === me))) { me = null; render(); lockScreen(); } else { render(); if (wantGuide && !D.REAL) setTimeout(openGuide, 700); }
+    if (!me || (D.REAL && !S().setup) || (me && !D.STAFF.some((u) => u.id === me))) { me = null; render(); lockScreen(); } else { render(); if (wantGuide && !D.REAL) setTimeout(openGuide, 700); else if (D.REAL && !D.openShift(S(), 1) && can('close') === 1 && route === 'sell') setTimeout(() => { go('shift'); D.toast('افتح الوردية للبدء', 'اكتب العهدة اللي في الدرج', { ic: 'drawer' }); }, 400); }
     window.addEventListener('hashchange', () => { const h = location.hash.slice(1).split('/'); const r = h[0]; const sub = r === 'settings' && h[1] && h[1] !== setTab; if (sub) setTab = h[1]; if ((r !== route || sub) && VIEWS[r]) { const rr = ROUTES.find((x) => x.id === r); if (can(rr.perm)) { route = r; render(); } } });
   }
   window.DARJ_APP = { go };

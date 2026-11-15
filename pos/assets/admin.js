@@ -59,6 +59,22 @@
     return saved;
   }
   async function signIn(email, password) {
+    // دخول واحد: لو اتصال الكاشير على الجهاز ده لسه من غير حساب، المدير يدخل عليه هو،
+    // فنفس الدخول يفتح صفحة Website ويشغّل الحفظ على السيرفر (وصفحة المتابعة من الجوال تشتغل).
+    const X = window.DARJ_CONNECT;
+    if (X && X.client && X.begin && !X.status().on) {
+      const dc = await X.client();
+      const cur = await dc.auth.getSession();
+      if (!(cur && cur.data && cur.data.session)) {
+        const o2 = await dc.auth.signInWithPassword({ email: clean(email, 180), password: String(password || '') });
+        if (o2.error) throw new Error('bad');
+        const ok2 = await dc.from('admin_users').select('user_id').eq('user_id', o2.data.user.id).maybeSingle();
+        if (ok2.error || !ok2.data) { try { await dc.auth.signOut({ scope: 'local' }); } catch (e) { /* */ } throw new Error('denied'); }
+        adm = dc; own = false; admEmail = o2.data.user.email || '';
+        try { X.begin(admEmail); } catch (e) { /* */ }
+        return;
+      }
+    }
     const c = adminClient();
     const out = await c.auth.signInWithPassword({ email: clean(email, 180), password: String(password || '') });
     if (out.error) throw new Error('bad');

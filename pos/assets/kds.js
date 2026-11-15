@@ -72,9 +72,12 @@
       foot = `<span class="kt__wait">${D.icon('clock', 'sm')}${t.wait} ${D.esc(wait)}</span><button class="btn btn--soft btn--sm kt__back" data-op="back" data-id="${o.id}" title="${t.back}">${D.icon('refund', 'sm')}</button>`;
     }
     const primary = col === 'new' ? 'start' : col === 'make' ? 'ready' : o.status === 'ready' ? 'pickup' : '';
+    // مين ماسك الطلب ده: الاسم بيظهر على التذكرة من أول ما يبدأ التحضير
+    const made = D.madeBy(o).filter((x) => at === 'all' || x.st === at);
+    const by = made.length ? `<div class="kt__by">${D.icon('user', 'sm')}<span>${made.map((x) => `${at === 'all' ? D.esc(stName(x.st, lang)) + ' · ' : ''}${D.esc(D.staff(x.by).short)}`).join(' — ')}</span></div>` : '';
     return `<article class="kt ${cls}${o._in ? ' in' : ''}" data-id="${o.id}" data-col="${col}">
       <div class="kt__h" ${primary ? `data-op="${primary}" data-id="${o.id}"` : ''}><div><b>#${o.no}</b><span class="kt__ch">${D.icon(ch.ic, 'sm')}${D.esc(where(o, lang))}${o.name ? ' · ' + D.esc(o.name) : ''}</span></div><span class="kt__time" data-t="${o.id}">${D.mmss(a)}</span></div>
-      <div class="kt__lines">${mine}${others}</div>
+      <div class="kt__lines">${mine}${others}${by}</div>
       <div class="kt__f">${foot}</div>
     </article>`;
   }
@@ -108,10 +111,13 @@
     el.addEventListener('click', (e) => {
       const b = e.target.closest('[data-op]');
       const ln = e.target.closest('[data-line]');
+      // opt.by: الموظف الداخل على الشاشة. لو الشاشة بتطلب دخول ومفيش حد داخل، الحركة ماتتسجلش
+      const who = opt.by ? opt.by() : undefined;
+      if (opt.by && opt.need && !who) { if (ln || b) opt.need(); return; }
       if (ln && !b) { D.act('line', { id: ln.dataset.id, i: +ln.dataset.line, done: ln.dataset.done !== '1' }); return; }
       if (!b) return;
       const op = b.dataset.op, id = b.dataset.id;
-      const r = D.act(op, { id, st: at });
+      const r = D.act(op, { id, st: at, by: who || undefined });
       if (D.SAT && window.DARJ_LINK && !window.DARJ_LINK.hubOnline()) return; // الحركة ما اتسجلتش، فمفيش نغمة تأكيد
       if (op === 'ready') { const o = D.state().orders.find((x) => x.id === id); if (o && o.status === 'ready') D.sound('ready'); else D.sound('ok'); if (r && typeof r.then === 'function') r.then(() => {}); }
     });

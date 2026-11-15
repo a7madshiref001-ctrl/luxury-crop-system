@@ -8,6 +8,9 @@
   var money = function (v) { return Number(v || 0).toLocaleString("en-US", { maximumFractionDigits: 2 }); };
   var STATUS = { new: "جديد", preparing: "قيد التحضير", ready: "جاهز", completed: "مكتمل", cancelled: "ملغي" };
   var busy = false, timer = null, loadedAt = 0, names = {}, settings = null, unsub = null;
+  var invAll = false, invOpen = {}, lastPos = null;
+  var POS_STATUS = { new: "بانتظار الدفع", prep: "قيد التحضير", ready: "جاهز", done: "تم التسليم", rejected: "ملغي", cancelled: "ملغي" };
+  var STATION = { bar: "الباريستا", kitchen: "المطبخ" };
 
   function ago(t) {
     if (!t) return "—";
@@ -34,9 +37,37 @@
     $("lvGate").hidden = true; $("lvApp").hidden = false;
   }
 
+  // فواتير اليوم كاملة، الأحدث فوق. الضغط على الفاتورة يفتح أصنافها وطريقة الدفع ومين حضّرها
+  function paintInvoices(o) {
+    var who = o.staffNames || {};
+    var list = (o.orders || []).filter(function (x) { return x && x.id && !x.sim && (x.inv || x.status !== "new"); })
+      .sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+    var box = $("lvInv"), more = $("lvInvMore");
+    if (!list.length) { box.innerHTML = empty(o.hasCopy ? "لا توجد فواتير اليوم حتى الآن. أول فاتورة تظهر هنا خلال دقيقة من تسجيلها." : "تظهر الفواتير هنا بعد ربط الكاشير بالسيرفر."); more.hidden = true; return; }
+    var shown = invAll ? list : list.slice(0, 12);
+    box.innerHTML = shown.map(function (x) {
+      var bad = x.status === "rejected" || x.cancelled;
+      var pays = (x.pays || []).map(function (p) { return P.PAY[p.m] || p.m; }).join(" + ");
+      var sub = clock(x.ts) + (who[x.staff] ? " · " + who[x.staff] : x.ch === "kiosk" ? " · الكشك" : x.ch === "table" || x.ch === "pickup" ? " · الموقع" : "") + (pays ? " · " + pays : x.unpaid ? " · لم تُدفع" : "");
+      var pill = bad ? '<span class="lv-pill">ملغي</span>' : x.refunded ? '<span class="lv-pill new">مرتجع ' + money(x.refunded) + "</span>" : x.unpaid ? '<span class="lv-pill new">لم تُدفع</span>' : "";
+      var lines = (x.lines || []).map(function (l) {
+        var nm = l.pid === "site_item" ? (l.note || "صنف من الموقع") : (names[l.pid] || "صنف");
+        return '<div class="lv-il"><span>' + esc((l.qty || 1) + "× " + nm) + (l.note && l.pid !== "site_item" ? "<small>" + esc(l.note) + "</small>" : "") + "</span><b>" + money(l.total) + "</b></div>";
+      }).join("");
+      var made = Object.keys(x.sp || {}).map(function (st) { var s = x.sp[st] || {}, by = s.rby || s.by; return by ? (STATION[st] || st) + ": " + (who[by] || "—") : ""; }).filter(Boolean);
+      var meta = [POS_STATUS[x.status] || x.status, made.length ? "حضّره — " + made.join(" · ") : "", x.doneBy && who[x.doneBy] ? "سلّمه " + who[x.doneBy] : "", x.name ? "العميل: " + x.name : ""].filter(Boolean).join(" · ");
+      return '<details class="lv-inv"' + (invOpen[x.id] ? " open" : "") + ' data-id="' + esc(x.id) + '"><summary class="lv-row"><div class="n"><b>' + esc((x.inv || "طلب") + " · #" + x.no) + "</b><span>" + esc(sub) + "</span></div>" + pill + '<div class="v">' + money(x.total) + "</div></summary>"
+        + '<div class="lv-inv__b">' + lines + '<div class="lv-il lv-il--meta"><span>' + esc(meta) + "</span></div></div></details>";
+    }).join("");
+    more.hidden = list.length <= 12;
+    more.textContent = invAll ? "آخر 12 فاتورة فقط" : "اعرض كل فواتير اليوم (" + list.length + ")";
+  }
+
   function paintPos(o) {
+    lastPos = o;
+    paintInvoices(o);
     $("lvDay").textContent = "يوم العمل ⁦" + o.day + "⁩";
-    if (!o.hasCopy) status("الكاشير لسه ما حفظش أول نسخة على السيرفر. سجّل الدخول من الكاشير: Settings ← Online.", "warn");
+    if (!o.hasCopy) status("الكاشير غير مربوط بالسيرفر بعد. افتح الكاشير على جهاز المحل بحساب المدير واضغط «تسجيل الدخول والربط» في الشريط الأسود أسفل الشاشة (مرة واحدة فقط)، وبعدها تظهر الأرقام هنا تلقائيًا.", "warn");
     else {
       var stale = Date.now() - o.savedAt > 15 * 60000;
       status((stale ? "آخر حفظ من الكاشير " : "الكاشير متصل · آخر حفظ ") + ago(o.savedAt) + (o.today ? "" : " · آخر يوم عمل مسجّل " + o.day), stale ? "warn" : "ok");
@@ -146,7 +177,7 @@
     if (unsub) unsub();
     unsub = B.subscribeOrders(function () { w.setTimeout(load, 500); });
     clearInterval(timer);
-    timer = setInterval(function () { if (!d.hidden && Date.now() - loadedAt > 28000) load(); }, 10000);
+    timer = setInterval(function () { if (!d.hidden && Date.now() - loadedAt > 14000) load(); }, 5000);
   }
   async function login(e) {
     e.preventDefault();
@@ -161,6 +192,8 @@
   d.addEventListener("DOMContentLoaded", async function () {
     $("lvLogin").addEventListener("submit", login);
     $("lvRefresh").addEventListener("click", load);
+    $("lvInvMore").addEventListener("click", function () { invAll = !invAll; if (lastPos) paintInvoices(lastPos); });
+    $("lvInv").addEventListener("toggle", function (e) { var el = e.target; if (el && el.dataset && el.dataset.id) invOpen[el.dataset.id] = el.open; }, true);
     $("lvOrdering").addEventListener("change", toggleOrdering);
     $("lvLogout").addEventListener("click", async function () { try { await B.signOut(); } catch (_) { } w.location.reload(); });
     d.addEventListener("visibilitychange", function () { if (!d.hidden && !$("lvApp").hidden && Date.now() - loadedAt > 15000) load(); });

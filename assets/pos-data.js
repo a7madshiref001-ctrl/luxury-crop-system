@@ -114,7 +114,8 @@
       lastInvoice: h && h.seq ? h.seq.inv || 0 : 0,
       shift: open ? { id: open.id, by: who(open.user), openedAt: open.open, float: Number(open.float) || 0, expected: expectedCash(open, orders, h.payouts) } : null,
       lastClosed: shifts.filter(function (s) { return s && s.close; }).sort(function (a, b) { return b.close - a.close; })[0] || null,
-      sum: summarize(orders), orders: orders, days: res[1]
+      sum: summarize(orders), orders: orders, days: res[1],
+      staffNames: staff.reduce(function (m, u) { if (u && u.id) m[u.id] = u.name || ""; return m; }, {})
     };
   }
 

@@ -928,3 +928,10 @@ kbd{display:inline-flex;align-items:center;height:18px;padding:0 5px;border-radi
 .rcd__logo img{width:40px;height:40px;object-fit:contain;border-radius:10px;background:#fff;border:1px solid var(--line)}
 @media (max-width:820px){.rcd{grid-template-columns:minmax(0,1fr)}.rcd__prev{position:static;order:-1}.rcd__stage{max-height:340px}}
 @media (max-width:640px){.tpls{grid-template-columns:repeat(2,minmax(0,1fr))}.rng{grid-template-columns:minmax(0,1fr) 52px}.rng input[type=range]{grid-column:1/-1;grid-row:2}.tpl__s{display:none}}
+/* اسم الموظف اللي ماسك الطلب على شاشة التحضير */
+.kt__by{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;font-weight:700;color:var(--ink-2)}
+.kt__by .ico{flex:none;color:var(--muted)}
+.kbar .me{border:1px solid var(--line);background:var(--card)}
+#gate .lock__side .btn{display:inline-flex}
+.gate__links{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+.gate__links small{flex:1 0 100%;color:var(--muted);font-size:12px}

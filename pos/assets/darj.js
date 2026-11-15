@@ -36,7 +36,10 @@
     supervisor: { ar: 'مشرف وردية', en: 'Supervisor' },
     cashier: { ar: 'كاشير', en: 'Cashier' },
     barista: { ar: 'باريستا', en: 'Barista' },
+    chef: { ar: 'شيف', en: 'Chef' },
   };
+  // أدوار التحضير: شغلهم على شاشة الباريستا أو المطبخ، مش على الدرج
+  D.PREP_ROLES = { barista: 'bar', chef: 'kitchen' };
   D.STAFF = [
     { id: 'u1', name: 'نورة العتيبي', short: 'نورة', role: 'manager', pin: '9999', c: '#0E7A55' },
     { id: 'u2', name: 'فيصل الحربي', short: 'فيصل', role: 'supervisor', pin: '2222', c: '#2F5DA8' },
@@ -46,6 +49,8 @@
   ];
   D.DEMO_STAFF = D.STAFF;
   const NOBODY = { id: '', name: '—', short: '—', role: 'cashier', pin: '', c: '#8C8478' };
+  // بيانات الموظف اللي ينفع تتبعت للشاشات المربوطة: من غير الـPIN
+  D.pubStaff = () => (D.STAFF || []).filter((u) => u && u.id && !u.off).map((u) => ({ id: u.id, name: u.name, short: u.short, role: u.role, c: u.c }));
   D.staff = (id) => D.STAFF.find((s) => s.id === id) || (D.REAL ? NOBODY : D.STAFF[2]) || NOBODY;
 
   // 1 = مسموح · 'ask' = يحتاج موافقة مشرف/مدير بالـPIN · 0 = ممنوع
@@ -61,7 +66,7 @@
     { id: 'close', ar: 'قفل الوردية (قفل أعمى)', cashier: 1, supervisor: 1, manager: 1, barista: 0 },
     { id: 'expected', ar: 'رؤية المبلغ المتوقع في الدرج', cashier: 0, supervisor: 0, manager: 1, barista: 0 },
     { id: 'avail', ar: 'إيقاف صنف نفد', cashier: 1, supervisor: 1, manager: 1, barista: 1 },
-    { id: 'kds', ar: 'شاشة الباريستا', cashier: 1, supervisor: 1, manager: 1, barista: 1 },
+    { id: 'kds', ar: 'شاشات التحضير (الباريستا والمطبخ)', cashier: 1, supervisor: 1, manager: 1, barista: 1 },
     { id: 'reports', ar: 'التقارير والمبيعات', cashier: 0, supervisor: 1, manager: 1, barista: 0 },
     { id: 'stock', ar: 'المخزون والجرد والاستلام', cashier: 0, supervisor: 1, manager: 1, barista: 0 },
     { id: 'cost', ar: 'رؤية التكلفة وصافي الربح', cashier: 0, supervisor: 0, manager: 1, barista: 0 },
@@ -69,6 +74,7 @@
     { id: 'team', ar: 'الموظفين والصلاحيات وسجل الحركات', cashier: 0, supervisor: 0, manager: 1, barista: 0 },
     { id: 'settings', ar: 'الإعدادات والأجهزة', cashier: 0, supervisor: 0, manager: 1, barista: 0 },
   ];
+  D.PERMS.forEach((p) => { if (p.chef == null) p.chef = p.barista; }); // الشيف زي الباريستا: شاشته وإيقاف صنف نفد بس
   // سياسة العميل ممكن تغيّر الصلاحيات الافتراضية — مثال: DARJ_CONFIG.perms = { void: { cashier: 1 } }
   Object.keys(CFG.perms || {}).forEach((id) => { const p = D.PERMS.find((x) => x.id === id); if (p) Object.assign(p, CFG.perms[id]); });
   D.can = (u, perm) => {
@@ -645,7 +651,7 @@
      الحالة جاية من الكاشير، ومفيش محاكاة ولا أرشفة ولا كتابة في التخزين المحلي — والأوامر بتروح للكاشير. */
   D.SAT = false;
   const blankSat = () => ({ v: 1, sat: 1, day: D.dayKey(Date.now()), rev: 0, seq: { no: 0, inv: 0 }, orders: [], holds: [], shifts: [], payouts: [], log: [], waste: [], receipts: [], counts: [], feed: [], pendingRemote: [], customers: [], prices: {}, avail: {}, stock: {}, routes: {}, settings: { sound: true, loyalNeed: CFG.loyalNeed || 8, vatOn: CFG.vatOn !== false }, tally: null });
-  D.adopt = (snap, why) => { S = Object.assign(blankSat(), snap); if (snap.store) Object.assign(D.STORE, snap.store); D.TRAIN = !!snap.train; D.REMOTE_REAL = !!snap.real; emit(why || 'remote'); };
+  D.adopt = (snap, why) => { S = Object.assign(blankSat(), snap); if (Array.isArray(snap.staff)) D.STAFF = snap.staff; if (snap.store) Object.assign(D.STORE, snap.store); D.TRAIN = !!snap.train; D.REMOTE_REAL = !!snap.real; emit(why || 'remote'); };
   D.load = () => {
     if (D.SAT) { if (!S) S = blankSat(); return S; }
     if (D.REAL) {
@@ -748,13 +754,13 @@
     start: (a) => D.mutate((s) => {
       const o = findO(s, a.id); if (!o || !['prep', 'new'].includes(o.status)) return;
       const now = Date.now(); o.sp = o.sp || {};
-      sts(s, o, a.st).forEach((x) => { o.sp[x] = Object.assign({}, o.sp[x]); if (!o.sp[x].start) o.sp[x].start = now; });
+      sts(s, o, a.st).forEach((x) => { o.sp[x] = Object.assign({}, o.sp[x]); if (!o.sp[x].start) { o.sp[x].start = now; if (a.by) o.sp[x].by = a.by; } });
       o.started = o.started || now;
     }, 'kds'),
     ready: (a) => D.mutate((s) => {
       const o = findO(s, a.id); if (!o || o.status !== 'prep') return false;
       const now = Date.now(); o.sp = o.sp || {};
-      sts(s, o, a.st).forEach((x) => { o.sp[x] = Object.assign({}, o.sp[x]); if (!o.sp[x].start) o.sp[x].start = now; o.sp[x].ready = now; });
+      sts(s, o, a.st).forEach((x) => { o.sp[x] = Object.assign({}, o.sp[x]); if (!o.sp[x].start) o.sp[x].start = now; o.sp[x].ready = now; if (a.by) { o.sp[x].rby = a.by; if (!o.sp[x].by) o.sp[x].by = a.by; } });
       o.started = o.started || now;
       const all = D.stationsOf(s, o).every((x) => o.sp[x] && o.sp[x].ready);
       if (all) { o.status = 'ready'; o.tsReady = now; if (D.hooks.status && o.ext) D.hooks.status(o, 'ready'); }
@@ -763,14 +769,26 @@
     back: (a) => D.mutate((s) => { // رجّع نصيب الشاشة لـ«بيتعمل» لو اتضغط جاهز بالغلط
       const o = findO(s, a.id); if (!o || !['prep', 'ready'].includes(o.status)) return;
       o.sp = o.sp || {};
-      sts(s, o, a.st).forEach((x) => { if (o.sp[x]) delete o.sp[x].ready; });
+      sts(s, o, a.st).forEach((x) => { if (o.sp[x]) { delete o.sp[x].ready; delete o.sp[x].rby; } });
       if (o.status === 'ready') { o.status = 'prep'; delete o.tsReady; if (D.hooks.status && o.ext) D.hooks.status(o, 'prep'); }
     }, 'kds'),
-    pickup: (a) => D.setStatus(a.id, 'done'),
+    pickup: (a) => { const r = D.setStatus(a.id, 'done'); if (a.by) D.mutate((s) => { const o = findO(s, a.id); if (o) o.doneBy = a.by; }, 'kds'); return r; },
+    // دخول موظف باسمه على أي شاشة (الباريستا، المطبخ، صفحة الدخول): الـPIN بيتراجع عند الكاشير نفسه، والدخول بيتسجل في السجل باسمه
+    signin: (a) => {
+      const held = D.pinWait('station'); if (held) return { ok: 0, wait: held };
+      const u = (D.STAFF || []).find((x) => x.id === a.uid && !x.off);
+      if (!u || !u.pin || String(a.pin || '') !== u.pin) return { ok: 0, wait: D.pinFail('station', null, `دخول باسم ${u ? u.name : '—'} — ${a.where || 'شاشة'}`) || 0 };
+      D.pinOk('station');
+      D.mutate(() => D.log(u.id, 'login', `تسجيل دخول — ${a.where || 'شاشة'} (${D.ROLES[u.role].ar})`), 'login');
+      return { ok: 1, u: { id: u.id, name: u.name, short: u.short, role: u.role, c: u.c } };
+    },
+    signout: (a) => { if (a.uid) D.mutate(() => D.log(a.uid, 'login', `تسجيل خروج — ${a.where || 'شاشة'}`), 'logout'); return { ok: 1 }; },
     line: (a) => D.mutate((s) => { const o = findO(s, a.id); if (!o) return; o.lineDone = (o.lineDone || []).filter((x) => x !== a.i); if (a.done) o.lineDone.push(a.i); }, 'kds'),
     kiosk: (a) => D.kioskOrder(a.draft),
   };
   D.act = (op, a) => (D.ACT[op] ? D.ACT[op](a || {}) : null);
+  // مين حضّر نصيب كل محطة من الطلب: [{ st, by }] — اللي ضغط «جاهز»، ولو مفيش فاللي بدأ
+  D.madeBy = (o) => Object.keys(o.sp || {}).map((st) => ({ st, by: o.sp[st].rby || o.sp[st].by || '', start: o.sp[st].start || 0, ready: o.sp[st].ready || 0 })).filter((x) => x.by);
 
   // طلب من الكشك (الدفع الذاتي): مدفوع بالبطاقة = للتحضير على طول · الدفع عند الكاشير = يستنى التحصيل
   D.kioskOrder = (d) => D.mutate((s) => {

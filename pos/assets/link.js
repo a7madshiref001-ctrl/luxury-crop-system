@@ -33,7 +33,7 @@
     }
   }
   const pair = ROLE !== 'hub' ? readPair() : null;
-  if (pair && L.ok) { D.SAT = true; L.paired = true; }
+  if (pair && L.ok) { D.SAT = true; L.paired = true; D.STAFF = []; } // أسماء الموظفين بتيجي من الكاشير مع أول تحديث
   L.unpair = () => { try { localStorage.removeItem(PKEY); localStorage.removeItem(BASE + ':snap'); } catch (e) { /* */ } location.reload(); };
 
   /* ---------- crypto ---------- */
@@ -97,7 +97,7 @@
   /* =====================================================================
      HUB — جوه الكاشير (تاب واحد بس في الجهاز بيبقى المركز)
      ===================================================================== */
-  const SLIM = ['id', 'no', 'ts', 'day', 'ch', 'type', 'table', 'label', 'name', 'voided', 'lineDone', 'sp', 'started', 'status', 'tsAcc', 'tsReady', 'tsDone', 'unpaid', 'payFirst', 'total', 'sim', 'kid', 'cancelled', 'inv'];
+  const SLIM = ['doneBy', 'id', 'no', 'ts', 'day', 'ch', 'type', 'table', 'label', 'name', 'voided', 'lineDone', 'sp', 'started', 'status', 'tsAcc', 'tsReady', 'tsDone', 'unpaid', 'payFirst', 'total', 'sim', 'kid', 'cancelled', 'inv'];
   function slim(o) {
     const x = {}; SLIM.forEach((k) => { if (o[k] != null) x[k] = o[k]; });
     x.lines = o.lines.map((l) => ({ pid: l.pid, qty: l.qty, mods: l.mods, note: l.note, st: l.st, total: l.total, reward: l.reward }));
@@ -111,7 +111,7 @@
       v: 1, rev: s.rev || 0, day: s.day, train: !!D.TRAIN, real: !!D.REAL, seq: { no: s.seq.no },
       store: { nameAr: D.STORE.nameAr, nameEn: D.STORE.nameEn, branchAr: D.STORE.branchAr, branchEn: D.STORE.branchEn, tagEn: D.STORE.tagEn, addr: D.STORE.addr },
       settings: { sound: s.settings.sound, orderTone: s.settings.orderTone, orderVol: s.settings.orderVol, orderRepeat: s.settings.orderRepeat, loyalNeed: s.settings.loyalNeed, vatOn: s.settings.vatOn, offline: s.settings.offline, kiosk: s.settings.kiosk || null },
-      prices: s.prices || {}, avail: s.avail || {}, routes: s.routes || {}, tally, orders: live.map(slim),
+      prices: s.prices || {}, avail: s.avail || {}, routes: s.routes || {}, tally, staff: D.pubStaff(), orders: live.map(slim),
     };
   }
   let snapT = 0, lastSnapAt = 0;
@@ -125,7 +125,7 @@
     if (!res) {
       let r = null;
       try { r = D.ACT[m.op] ? D.ACT[m.op](m.a || {}) : null; } catch (e) { console.error(e); }
-      res = m.op === 'kiosk' ? (r ? { ok: 1, no: r.no, id: r.id, total: r.total, status: r.status, inv: r.inv } : { ok: 0 }) : { ok: 1 };
+      res = m.op === 'kiosk' ? (r ? { ok: 1, no: r.no, id: r.id, total: r.total, status: r.status, inv: r.inv } : { ok: 0 }) : m.op === 'signin' || m.op === 'signout' ? (r || { ok: 0 }) : { ok: 1 };
       done.set(m.cid, res); if (done.size > 400) done.delete(done.keys().next().value);
     }
     send({ t: 'ack', to: m.from, cid: m.cid, res });
@@ -216,6 +216,7 @@
     D.act = (op, a) => {
       a = a || {};
       if (op === 'kiosk') return call(op, a);
+      if (op === 'signin' || op === 'signout') return L.hubOnline() ? call(op, a) : Promise.resolve(null); // الـPIN بيتراجع عند الكاشير
       // الكاشير مش متصل: الحركة ماتتسجلش، فماتبانش كأنها اتنفذت
       if (!L.hubOnline()) { warn('الكاشير غير متصل الآن', 'لم تُسجَّل الحركة — أعدها بعد عودة الاتصال بالكاشير'); return Promise.resolve(null); }
       if (D.ACT[op]) { try { D.ACT[op](a); } catch (e) { /* */ } } // بتبان على طول، والكاشير بيأكّد

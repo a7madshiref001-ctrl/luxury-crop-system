@@ -51,6 +51,17 @@
     const r = await c.rpc('pos_access');
     return !r.error && r.data && r.data.member === true;
   }
+  // دخول المدير من صفحة Website كان بيتحفظ لوحده ومابيشغّلش الحفظ على السيرفر (فصفحة الجوال تفضل فاضية).
+  // دلوقتي الدخول واحد: لو فيه جلسة إدارة قديمة محفوظة على الجهاز، بتتنقل لاتصال الكاشير مرة واحدة.
+  const OLD_ADMIN = 'luxurycrop-pos-admin';
+  async function adoptAdminSession(c) {
+    let old = null;
+    try { old = JSON.parse(localStorage.getItem(OLD_ADMIN) || 'null'); } catch (e) { /* */ }
+    if (!old || !old.access_token || !old.refresh_token) return null;
+    const out = await c.auth.setSession({ access_token: old.access_token, refresh_token: old.refresh_token });
+    try { localStorage.removeItem(OLD_ADMIN); } catch (e) { /* */ }
+    return out && !out.error && out.data && out.data.session ? out.data.session.user : null;
+  }
 
   /* ---------- website orders ---------- */
   const SITE_ITEM = 'site_item'; // أي صنف مش موجود في منيو الكاشير بيوصل باسمه وسعره بدل ما الطلب يضيع
@@ -259,7 +270,7 @@
         if (out.error) return err('البريد أو كلمة المرور غير صحيحة');
         if (!(await access(c))) { await c.auth.signOut({ scope: 'local' }); return err('الحساب ده مش مسموح له يشغّل الكاشير'); }
         D.mutate(() => D.log(boxMe, 'sync', 'تشغيل الربط مع السيرفر'), 'sync');
-        m.close(); start(out.data.user.email);
+        m.close(); hideNag(); start(out.data.user.email);
       } catch (e) { err('تعذّر الاتصال. تأكد من الإنترنت'); }
     });
   }
@@ -313,6 +324,9 @@
     enabled: !!C.enabled,
     panel(el, me) { box = el; boxMe = me; if (!el.dataset.cx) { el.dataset.cx = '1'; el.addEventListener('click', onBox); } paint(); },
     status: () => Object.assign({}, cloud),
+    // صفحة Website دخلت بحساب الإدارة على اتصال الكاشير: الحفظ على السيرفر يبدأ بنفس الدخول
+    begin: (email) => { if (!D.REAL || cloud.on) return; hideNag(); if (D.state().setup) { D.mutate(() => D.log(boxMe, 'sync', 'تشغيل الربط مع السيرفر'), 'sync'); start(email); } },
+    signIn: () => signIn(),
     // لصفحة إدارة الموقع: نفس اتصال الكاشير، ومعرفة هل الحساب الحالي حساب إدارة
     client: init,
     access: async () => { const c = await init(); const r = await c.rpc('pos_access'); return r.error ? null : r.data; },
@@ -406,14 +420,35 @@
     if (c && email) choose(c, email); else login('');
   }
 
+  /* ---------- تنبيه «غير مربوط»: المحل شغال والبيانات على الجهاز بس ----------
+     من غير الربط: مفيش نسخة احتياطية، وصفحة المتابعة من الجوال فاضية. التنبيه بيظهر للمدير بس لحد ما يسجّل الدخول مرة واحدة. */
+  let nag = null, nagOff = false;
+  function hideNag() { if (nag) { nag.remove(); nag = null; } }
+  function drawNag() {
+    let role = '';
+    try { const id = sessionStorage.getItem('darj:me'); role = id ? D.staff(id).role : ''; } catch (e) { /* */ }
+    const show = !cloud.on && !nagOff && D.REAL && D.state().setup && role === 'manager' && !document.querySelector('.lock');
+    if (!show) { hideNag(); return; }
+    if (nag && nag.isConnected) return;
+    nag = document.createElement('div');
+    nag.id = 'cxNag';
+    nag.style.cssText = 'position:fixed;inset-inline:12px;bottom:12px;z-index:70;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border-radius:16px;background:#141414;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.25);font-size:13px;max-width:720px;margin-inline:auto';
+    nag.innerHTML = `<span style="flex:1;min-width:200px;line-height:1.6"><b style="display:block">Not connected · الكاشير غير مربوط بالسيرفر</b>البيانات على هذا الجهاز فقط: لا توجد نسخة احتياطية، وصفحة المتابعة من الجوال لن تعرض شيئًا. سجّل الدخول مرة واحدة.</span>
+      <button class="btn btn--sm" data-nag="in" style="background:#fff;color:#141414">${bi('Connect', 'تسجيل الدخول والربط')}</button><button class="btn btn--sm" data-nag="x" style="color:#fff;border:1px solid rgba(255,255,255,.3)">لاحقًا</button>`;
+    nag.addEventListener('click', (e) => { const b = e.target.closest('[data-nag]'); if (!b) return; if (b.dataset.nag === 'in') signIn(); else { nagOff = true; hideNag(); } });
+    document.body.appendChild(nag);
+  }
+
   // لو فيه جلسة محفوظة، الربط بيرجع لوحده. وجهاز من غير بيانات بيعرض تحميل نسخة السيرفر
   if (C.enabled && D.REAL) {
     const fresh = () => !D.state().setup;
     init().then(async (c) => {
       const s = await c.auth.getSession();
-      const u = s && s.data && s.data.session && s.data.session.user;
+      let u = s && s.data && s.data.session && s.data.session.user;
+      if (!u) u = await adoptAdminSession(c).catch(() => null);
       if (u && await access(c)) { if (fresh()) welcome(c, u.email); else start(u.email); }
       else if (fresh()) welcome();
-    }).catch(() => { if (fresh()) welcome(); });
+      setInterval(drawNag, 4000); setTimeout(drawNag, 1500);
+    }).catch(() => { if (fresh()) welcome(); setInterval(drawNag, 4000); });
   }
 })();

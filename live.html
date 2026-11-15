@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="assets/logo.png">
 <link rel="stylesheet" href="assets/fonts.css?v=20260920-qa">
 <link rel="stylesheet" href="assets/core.css?v=20260920-qa">
-<link rel="stylesheet" href="assets/live.css?v=20261115-unified">
+<link rel="stylesheet" href="assets/live.css?v=20261116-invoices">
 </head>
 <body class="lv-pending">
 
@@ -56,23 +56,29 @@
       <div class="lv-week" id="lvWeek" aria-label="آخر ٧ أيام"></div>
     </section>
 
+    <section class="lv-sec" aria-labelledby="lvS6">
+      <div class="lv-h"><i>02</i><div><h2 id="lvS6">Invoices</h2><span>فواتير اليوم — اضغط أي فاتورة لتفاصيلها</span></div></div>
+      <div class="lv-list" id="lvInv"></div>
+      <button class="btn btn-g btn-block lv-more" id="lvInvMore" type="button" hidden></button>
+    </section>
+
     <section class="lv-sec" aria-labelledby="lvS2">
-      <div class="lv-h"><i>02</i><div><h2 id="lvS2">Now</h2><span>الوضع الحالي</span></div></div>
+      <div class="lv-h"><i>03</i><div><h2 id="lvS2">Now</h2><span>الوضع الحالي</span></div></div>
       <div class="lv-list" id="lvNow"></div>
     </section>
 
     <section class="lv-sec" aria-labelledby="lvS3">
-      <div class="lv-h"><i>03</i><div><h2 id="lvS3">Payments</h2><span>طرق الدفع اليوم</span></div></div>
+      <div class="lv-h"><i>04</i><div><h2 id="lvS3">Payments</h2><span>طرق الدفع اليوم</span></div></div>
       <div class="lv-list" id="lvPays"></div>
     </section>
 
     <section class="lv-sec" aria-labelledby="lvS4">
-      <div class="lv-h"><i>04</i><div><h2 id="lvS4">Top items</h2><span>الأكثر مبيعًا اليوم</span></div></div>
+      <div class="lv-h"><i>05</i><div><h2 id="lvS4">Top items</h2><span>الأكثر مبيعًا اليوم</span></div></div>
       <div class="lv-list" id="lvTop"></div>
     </section>
 
     <section class="lv-sec" aria-labelledby="lvS5">
-      <div class="lv-h"><i>05</i><div><h2 id="lvS5">Website orders</h2><span>طلبات الموقع</span></div></div>
+      <div class="lv-h"><i>06</i><div><h2 id="lvS5">Website orders</h2><span>طلبات الموقع</span></div></div>
       <label class="lv-switch"><span><b>استقبال طلبات الموقع</b><small id="lvOrderingNote">—</small></span><input id="lvOrdering" type="checkbox" role="switch"></label>
       <div class="lv-chips" id="lvSiteCounts"></div>
       <div class="lv-list" id="lvSite"></div>
@@ -90,7 +96,7 @@
 <script defer src="data/backend-config.js?v=20260925-custom-domain"></script>
 <script defer src="assets/vendor/supabase-2.116.0.js?v=2.116.0"></script>
 <script defer src="assets/backend.js?v=20260923-visual-order"></script>
-<script defer src="assets/pos-data.js?v=20261115-unified"></script>
-<script defer src="assets/live.js?v=20261115-unified"></script>
+<script defer src="assets/pos-data.js?v=20261116-invoices"></script>
+<script defer src="assets/live.js?v=20261116-invoices"></script>
 </body>
 </html>
