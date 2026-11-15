@@ -116,7 +116,32 @@
   }
   let snapT = 0, lastSnapAt = 0;
   const hasPeers = () => L.peers.some((p) => p.role && p.role !== 'hub');
-  function snapNow() { clearTimeout(snapT); snapT = 0; if (!hasPeers()) return; lastSnapAt = Date.now(); send({ t: 'snap', snap: snapshot() }); }
+  /* ملخّص اليوم لجوال المدير (role = phone): الأرقام محسوبة هنا عند الكاشير، وآخر 80 فاتورة بتفاصيلها */
+  function phoneStats() {
+    const s = D.state(); const all = s.orders.filter((o) => !o.sim);
+    const sum = { count: 0, gross: 0, refunds: 0, by: {}, open: 0, unpaid: 0 }; const items = {};
+    all.forEach((o) => {
+      if (o.unpaid && o.status !== 'rejected' && o.status !== 'cancelled') sum.unpaid++;
+      if (['new', 'prep', 'ready'].includes(o.status)) sum.open++;
+      if (o.status === 'rejected' || o.unpaid) return;
+      sum.count++; sum.gross += o.total || 0; sum.refunds += o.refunded || 0;
+      (o.pays || []).forEach((p) => { sum.by[p.m] = (sum.by[p.m] || 0) + (p.a || 0); });
+      (o.lines || []).forEach((l) => { if (!l || !l.pid) return; const it = items[l.pid] || (items[l.pid] = { n: (D.prod(l.pid) || {}).ar || l.note || 'صنف', q: 0 }); it.q += l.qty || 0; });
+    });
+    sum.gross = D.r2(sum.gross); sum.refunds = D.r2(sum.refunds); Object.keys(sum.by).forEach((k) => { sum.by[k] = D.r2(sum.by[k]); });
+    const inv = all.filter((o) => o.inv || o.status !== 'new').sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 80).map((o) => {
+      const sp = {}; Object.keys(o.sp || {}).forEach((k) => { const x = o.sp[k] || {}; if (x.by || x.rby) sp[k] = x.rby || x.by; });
+      return { id: o.id, no: o.no, inv: o.inv, ts: o.ts, total: o.total, refunded: o.refunded || 0, status: o.status, unpaid: !!o.unpaid, cancelled: !!o.cancelled, ch: o.ch, name: o.name || '', staff: o.staff || '', doneBy: o.doneBy || '', sp,
+        pays: (o.pays || []).map((p) => ({ m: p.m, a: p.a })), lines: (o.lines || []).map((l) => ({ n: (D.prod(l.pid) || {}).ar || l.note || 'صنف', q: l.qty, t: l.total, note: l.pid === 'site_item' ? '' : l.note || '' })) };
+    });
+    const sh = (s.shifts || []).find((x) => !x.close); const names = {}; (s.staff || []).forEach((u) => { if (u && u.id) names[u.id] = u.name; });
+    return { v: 1, day: s.day, at: Date.now(), store: D.STORE.nameAr, sum, top: Object.values(items).sort((a, b) => b.q - a.q).slice(0, 6), inv, names,
+      shift: sh ? { by: names[sh.user] || '', open: sh.open, float: sh.float, expected: D.expectedCash(s, sh) } : null, soldOut: Object.keys(s.avail || {}).filter((k) => s.avail[k] === false).length, lastInv: s.seq.inv || 0 };
+  }
+  function snapNow() {
+    clearTimeout(snapT); snapT = 0; if (!hasPeers()) return; lastSnapAt = Date.now(); send({ t: 'snap', snap: snapshot() });
+    if (L.peers.some((p) => p.role === 'phone')) { try { send({ t: 'stats', stats: phoneStats() }); } catch (e) { console.error(e); } }
+  }
   function snapSoon() { if (!snapT) snapT = setTimeout(snapNow, 140); }
   const done = new Map(); // الأمر اللي اتنفّذ قبل كده مايتنفّذش تاني (لو الشاشة بعتته مرتين)
   function exec(m) {
@@ -197,6 +222,8 @@
       D.adopt(m.snap, 'remote');
       try { localStorage.setItem(SNAP, lastSnap); } catch (e) { /* */ }
       if (!was) fire();
+    } else if (m.t === 'stats' && m.stats) {
+      L.last = Date.now(); L.live = true; L.stats = m.stats; try { localStorage.setItem(BASE + ':stats', JSON.stringify(m.stats)); } catch (e) { /* */ } fire();
     } else if (m.t === 'cart') { L.last = Date.now(); remoteCart = m.c; D.adopt(D.state(), 'cart'); }
     else if (m.t === 'ack' && m.to === DEV) { const p = pending.get(m.cid); if (p) { pending.delete(m.cid); p(m.res); } }
   }

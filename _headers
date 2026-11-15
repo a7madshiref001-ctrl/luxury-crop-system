@@ -24,6 +24,8 @@
   Cache-Control: no-cache
 /pos/screen
   Cache-Control: no-cache
+/pos/phone
+  Cache-Control: no-cache
 /pos/sw.js
   Cache-Control: no-cache
 /pos/assets/*

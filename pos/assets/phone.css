@@ -1,0 +1,41 @@
+/* جوال المدير — موبايل أولًا، فاتح */
+.ph{background:var(--paper)}
+.ph__m{width:min(560px,100%);margin:0 auto;padding:14px max(14px,env(safe-area-inset-right)) 40px max(14px,env(safe-area-inset-left));display:grid;gap:14px}
+.ph__h{display:flex;align-items:center;gap:10px;padding:6px 2px}
+.ph__h img{width:34px;height:34px}
+.ph__h b{display:block;font-size:16px;line-height:1.2}
+.ph__h small{color:var(--muted);font-size:12px}
+.ph__sp{flex:1}
+.ph__st{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:6px 10px;border-radius:999px;background:var(--card);border:1px solid var(--line)}
+.ph__st.on{color:#1d7a46}.ph__st.wait{color:#a86a10}
+.ph__st .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+.ph__big{background:#141414;color:#fff;border-radius:22px;padding:20px}
+.ph__big small{opacity:.7;font-size:12px}
+.ph__big b{display:block;font-family:var(--f-en);font-size:44px;line-height:1.1;letter-spacing:-.02em;direction:ltr;text-align:start;margin:4px 0}
+.ph__big span{opacity:.75;font-size:12.5px}
+.ph__g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ph__g div{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 10px;text-align:center}
+.ph__g b{display:block;font-family:var(--f-en);font-size:20px;direction:ltr}
+.ph__g small{color:var(--muted);font-size:11.5px}
+.ph__c{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:14px 16px}
+.ph__c h3{font-size:12px;letter-spacing:.04em;color:var(--muted);margin:0 0 8px;font-weight:700}
+.ph__r{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.ph__r:last-child{border-bottom:0}
+.ph__r b{font-family:var(--f-en);direction:ltr}
+.ph__r small{display:block;color:var(--muted);font-size:11.5px}
+.ph__e{color:var(--muted);font-size:13px;padding:8px 0}
+.ph details{border-bottom:1px solid var(--line)}
+.ph details:last-child{border-bottom:0}
+.ph summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;font-size:14px}
+.ph summary::-webkit-details-marker{display:none}
+.ph summary b.n{display:block}
+.ph summary small{color:var(--muted);font-size:11.5px;display:block}
+.ph summary .v{font-family:var(--f-en);font-weight:700;direction:ltr}
+.ph__il{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--muted);padding:2px 0}
+.ph__il b{font-family:var(--f-en);direction:ltr}
+.ph__meta{font-size:11.5px;color:var(--muted);border-top:1px dashed var(--line);margin:6px 0 10px;padding-top:6px}
+.ph__tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:#f1e3c8;color:#7a4b00;margin-inline-start:6px}
+.ph__more{width:100%;margin-top:8px}
+.ph__empty{display:grid;gap:10px;justify-items:center;text-align:center;padding:40px 16px;color:var(--muted);line-height:1.8}
+.ph__empty b{color:#141414;font-size:17px}
+.ph__f{text-align:center;color:var(--muted);font-size:12px}
