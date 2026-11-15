@@ -309,12 +309,91 @@
     test: /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? { mapOrder, syncCatalog, flushSales, flushState, pump, start, restore, reset() { client = null; started = false; paused = false; lastRev = -1; lastDay = ''; lastState = 0; fails = 0; } } : null,
   };
 
-  // لو فيه جلسة محفوظة، الربط بيرجع لوحده
+  /* ---------- جهاز أو تابة جديدة: دخول، وبعدها بيانات المحل تتحمّل من السيرفر ---------- */
+  async function latestCopy(c) {
+    const r = await c.from('pos_state').select('day,rev,state,updated_at').eq('store_key', STORE).order('day', { ascending: false }).limit(1).maybeSingle();
+    if (r.error) throw r.error;
+    const st = r.data && r.data.state;
+    return st && st.v === 1 && st.setup ? r.data : null;
+  }
+  async function adoptCopy(c, copy, takeOver) {
+    D.installState(copy.state, true);
+    try { sessionStorage.removeItem('darj:me'); } catch (e) { /* */ }
+    save(SIG_KEY, {});
+    if (!D.saved()) throw new Error('storage');
+    if (takeOver) {
+      const out = await c.rpc('pos_save_state', { p_key: STORE, p_day: copy.state.day, p_device: DEV, p_rev: copy.state.rev || 0, p_state: copy.state, p_version: VERSION, p_force: true });
+      if (out.error) throw out.error;
+    }
+    location.reload();
+  }
+  function welcome(c, email) {
+    let el = document.getElementById('cxWelcome');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'cxWelcome'; el.className = 'lock'; el.style.zIndex = '90';
+      document.body.appendChild(el);
+    }
+    const shell = (inner) => { el.innerHTML = `<div class="lock__in" style="max-width:440px;width:100%;text-align:right"><div style="text-align:center;margin-bottom:6px"><b style="font-size:20px">${esc((D.STORE && D.STORE.nameAr) || '')}</b></div>${inner}</div>`; };
+    const skip = () => { el.remove(); };
+    function login(msg) {
+      shell(`<h2 style="text-align:center;margin:6px 0 4px">${bi('Sign in to load your data', 'سجّل الدخول لتحميل بيانات المحل')}</h2>
+        <p class="muted" style="text-align:center;font-size:13px;margin:0 0 14px">الجهاز ده جديد. ادخل بحساب الكاشير وهنجيب آخر نسخة من السيرفر.</p>
+        <div class="grid" style="gap:12px"><label class="field"><span>البريد</span><input class="input mono" id="wE" type="email" autocomplete="username" dir="ltr"></label>
+        <label class="field"><span>كلمة المرور</span><input class="input mono" id="wP" type="password" autocomplete="current-password" dir="ltr"></label>
+        <div id="wErr">${msg ? `<div class="blind" style="color:var(--red)">${msg}</div>` : ''}</div>
+        <button class="btn btn--ink btn--block" id="wGo">${bi('Sign in', 'دخول وتحميل البيانات')}</button>
+        <button class="btn btn--ghost btn--block" id="wSkip">${bi('Set up from scratch', 'ابدأ إعداد جديد من غير السيرفر')}</button></div>`);
+      const err = (t) => { el.querySelector('#wErr').innerHTML = `<div class="blind" style="color:var(--red)">${t}</div>`; };
+      el.querySelector('#wSkip').addEventListener('click', skip);
+      const go = async () => {
+        const btn = el.querySelector('#wGo'); btn.disabled = true;
+        try {
+          const cl = await init();
+          const out = await cl.auth.signInWithPassword({ email: el.querySelector('#wE').value.trim(), password: el.querySelector('#wP').value });
+          if (out.error) { btn.disabled = false; return err('البريد أو كلمة المرور غير صحيحة'); }
+          if (!(await access(cl))) { await cl.auth.signOut({ scope: 'local' }); btn.disabled = false; return err('الحساب ده مش مسموح له يشغّل الكاشير'); }
+          choose(cl, out.data.user.email);
+        } catch (e) { btn.disabled = false; err('تعذّر الاتصال. تأكد من الإنترنت'); }
+      };
+      el.querySelector('#wGo').addEventListener('click', go);
+      el.querySelector('#wP').addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+      el.querySelector('#wE').focus();
+    }
+    async function choose(cl, mail) {
+      let copy = null;
+      try { copy = await latestCopy(cl); } catch (e) { shell(`<div class="blind" style="color:var(--red)">تعذّر قراءة نسخة السيرفر. تأكد من الإنترنت وحاول تاني.</div><button class="btn btn--ghost btn--block" id="wRetry" style="margin-top:12px">إعادة المحاولة</button>`); el.querySelector('#wRetry').addEventListener('click', () => choose(cl, mail)); return; }
+      if (!copy) { // مفيش نسخة لسه: كمّل الإعداد العادي، والحفظ هيبدأ لوحده بعده
+        start(mail); skip(); D.toast('مفيش بيانات محفوظة على السيرفر لسه', 'كمّل الإعداد وهتتحفظ تلقائيًا', { ms: 6000 });
+        return;
+      }
+      const st = copy.state;
+      const row = (a, b) => `<div class="set-row"><span><b>${a}</b></span><span class="num">${b}</span></div>`;
+      shell(`<h2 style="text-align:center;margin:6px 0 10px">${bi('Data found on the server', 'لقينا بيانات المحل على السيرفر')}</h2>
+        ${row('آخر حفظ', ago(new Date(copy.updated_at).getTime()))}${row('يوم العمل', esc(copy.day))}${row('آخر فاتورة', st.seq && st.seq.inv ? D.invNo(st.seq.inv) : '—')}${row('الموظفون', (st.staff || []).length)}
+        <div id="wErr"></div>
+        <div style="display:grid;gap:10px;margin-top:14px">
+          <button class="btn btn--ink btn--block" id="wTake">${bi('Continue here', 'كمّل من هنا (الجهاز ده يبقى الأساسي)')}</button>
+          <button class="btn btn--ghost btn--block" id="wCopy">${bi('Open a copy', 'افتح نسخة بس (الحفظ يفضل من الجهاز الأساسي)')}</button>
+        </div><p class="muted" style="font-size:12px;margin-top:10px">لو الكاشير شغّال على جهاز تاني دلوقتي، اختار «نسخة» عشان ماتخدش مكانه.</p>`);
+      const doit = async (take) => {
+        el.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+        try { await adoptCopy(cl, copy, take); } catch (e) { el.querySelectorAll('button').forEach((b) => { b.disabled = false; }); el.querySelector('#wErr').innerHTML = '<div class="blind" style="color:var(--red)">تعذّر تحميل البيانات على الجهاز ده. حاول تاني.</div>'; }
+      };
+      el.querySelector('#wTake').addEventListener('click', () => doit(true));
+      el.querySelector('#wCopy').addEventListener('click', () => doit(false));
+    }
+    if (c && email) choose(c, email); else login('');
+  }
+
+  // لو فيه جلسة محفوظة، الربط بيرجع لوحده. وجهاز من غير بيانات بيعرض تحميل نسخة السيرفر
   if (C.enabled && D.REAL) {
+    const fresh = () => !D.state().setup;
     init().then(async (c) => {
       const s = await c.auth.getSession();
       const u = s && s.data && s.data.session && s.data.session.user;
-      if (u && await access(c)) start(u.email);
-    }).catch(() => {});
+      if (u && await access(c)) { if (fresh()) welcome(c, u.email); else start(u.email); }
+      else if (fresh()) welcome();
+    }).catch(() => { if (fresh()) welcome(); });
   }
 })();
