@@ -1,7 +1,7 @@
 /* محصول فاخر — إدارة الموقع من جوّه الكاشير (صفحة Website)
    للمدير فقط (صلاحية الإعدادات). كل تعديل هنا بيتكتب في قاعدة بيانات الموقع مباشرة، فيظهر في منيو العملاء وفي الكاشير.
-   الأمان: الكتابة مسموحة لحساب الإدارة بس (RLS). لو جهاز الكاشير داخل بحساب كاشير، المدير بيدخل حساب الإدارة هنا
-   والجلسة دي بتفضل في الذاكرة لحد ما الصفحة تتقفل — كلمة مرور الإدارة مابتتحفظش على الجهاز. */
+   الأمان: الكتابة مسموحة لحساب الإدارة بس (RLS). لو جهاز الكاشير داخل بحساب كاشير، المدير بيدخل حساب الإدارة هنا مرة واحدة
+   والدخول بيفضل محفوظ على الجهاز (بطلب صاحب المحل) لحد ما يضغط «خروج». الصفحة نفسها بتفتح بـPIN المدير بس، وكلمة المرور نفسها مابتتحفظش. */
 (function () {
   'use strict';
   const D = window.DARJ;
@@ -42,11 +42,24 @@
     const c = await X.client();
     const a = await X.access();
     if (a && a.admin) { adm = c; own = false; const s = await c.auth.getSession(); admEmail = (s.data && s.data.session && s.data.session.user.email) || ''; return adm; }
-    return null;
+    // دخول إدارة محفوظ على الجهاز من مرة سابقة
+    const k = adminClient();
+    const got = await k.auth.getSession();
+    const u = got && got.data && got.data.session && got.data.session.user;
+    if (!u) return null;
+    const ok = await k.from('admin_users').select('user_id').eq('user_id', u.id).maybeSingle();
+    if (ok.error) throw ok.error;
+    if (!ok.data) { try { await k.auth.signOut({ scope: 'local' }); } catch (e) { /* */ } return null; }
+    adm = k; own = true; admEmail = u.email || '';
+    return adm;
+  }
+  let saved = null;
+  function adminClient() {
+    if (!saved) saved = window.supabase.createClient(C.url, C.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'luxurycrop-pos-admin' } });
+    return saved;
   }
   async function signIn(email, password) {
-    const lib = window.supabase;
-    const c = lib.createClient(C.url, C.key, { auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'luxurycrop-pos-admin' } });
+    const c = adminClient();
     const out = await c.auth.signInWithPassword({ email: clean(email, 180), password: String(password || '') });
     if (out.error) throw new Error('bad');
     const ok = await c.from('admin_users').select('user_id').eq('user_id', out.data.user.id).maybeSingle();
@@ -316,7 +329,7 @@
   }
   function tabAccount() {
     return `<div class="card" style="max-width:720px"><div class="card__h"><h3><span class="label">Account</span>حساب الإدارة</h3><span class="pill pill--go">${I('check', 'sm')}داخل</span></div>
-      <div class="set-row"><span><b class="mono" dir="ltr">${esc(admEmail)}</b><small>${own ? 'جلسة مؤقتة: تنتهي لما تقفل الكاشير أو تضغط خروج' : 'نفس حساب ربط الكاشير بالسيرفر'}</small></span>${own ? `<button class="btn btn--ghost btn--sm" data-adm-out>${bi('Sign out', 'خروج')}</button>` : ''}</div>
+      <div class="set-row"><span><b class="mono" dir="ltr">${esc(admEmail)}</b><small>${own ? 'الدخول محفوظ على هذا الجهاز. اضغط خروج لو الجهاز هيتغيّر' : 'نفس حساب ربط الكاشير بالسيرفر'}</small></span>${own ? `<button class="btn btn--ghost btn--sm" data-adm-out>${bi('Sign out', 'خروج')}</button>` : ''}</div>
       <div class="set-row"><span><b>${bi('Change password', 'تغيير كلمة المرور')}</b><small>12 حرفًا على الأقل: كبيرة وصغيرة ورقم ورمز</small></span><button class="btn btn--ghost btn--sm" data-pass>${bi('Change', 'تغيير')}</button></div></div>`;
   }
   function changePassword() {
@@ -340,7 +353,7 @@
     if (gate === 'error') { frame(`<div class="card" style="max-width:560px"><div class="blind" style="color:var(--red)">${I('alert', 'sm')}<span>تعذّر الاتصال بالسيرفر. تأكد من الإنترنت.</span></div><button class="btn btn--ink btn--block" data-retry style="margin-top:12px">${bi('Try again', 'إعادة المحاولة')}</button></div>`); view.querySelector('[data-retry]').addEventListener('click', open); return; }
     if (gate === 'login') {
       frame(`<form class="card adm-login" novalidate><div class="card__h"><h3><span class="label">Admin</span>دخول الإدارة</h3>${I('lock')}</div>
-        <p class="muted" style="margin-bottom:12px">تعديل الموقع محتاج حساب الإدارة. الجلسة مؤقتة وكلمة المرور لا تُحفظ على هذا الجهاز.</p>
+        <p class="muted" style="margin-bottom:12px">ادخل حساب الإدارة مرة واحدة على هذا الجهاز. بعدها الصفحة تفتح للمدير مباشرة.</p>
         <div class="grid" style="gap:12px"><label class="field"><span>البريد</span><input class="input mono" name="email" type="email" autocomplete="username" dir="ltr" required></label>
         <label class="field"><span>كلمة المرور</span><input class="input mono" name="password" type="password" autocomplete="current-password" dir="ltr" required></label>
         <div data-err></div><button class="btn btn--ink btn--block" type="submit">${bi('Sign in', 'دخول')}</button></div></form>`);
@@ -426,5 +439,5 @@
   }
 
   window.DARJ_PAGES = (window.DARJ_PAGES || []).concat([{ id: 'site', en: 'Website', ar: 'الموقع والأصناف', ic: 'globe', perm: 'settings', render }]);
-  window.DARJ_ADMIN = { test: /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? { state: () => ({ gate, tab, own, email: admEmail, data }), reset() { adm = null; own = false; data = null; gate = 'checking'; } } : null };
+  window.DARJ_ADMIN = { test: /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? { state: () => ({ gate, tab, own, email: admEmail, data }), reset() { adm = null; saved = null; own = false; data = null; gate = 'checking'; } } : null };
 })();
