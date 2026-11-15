@@ -13,7 +13,7 @@
 <link rel="icon" href="assets/logo.png">
 <link rel="stylesheet" href="assets/fonts.css?v=20260920-qa">
 <link rel="stylesheet" href="assets/core.css?v=20260920-qa">
-<link rel="stylesheet" href="assets/owner.css?v=20260923-visual-order">
+<link rel="stylesheet" href="assets/owner.css?v=20261115-unified">
 </head>
 <body class="auth-pending">
 
@@ -62,11 +62,20 @@
   </div>
 
   <div class="navgrp">
-    <div class="ttl">التحكّم</div>
-    <button class="nv" data-p="control"><span class="e">🎛️</span> تحكّم فوري</button>
+    <div class="ttl">Items · الأصناف <small class="ttl-note">للموقع والكاشير</small></div>
     <button class="nv" data-p="catalog"><span class="e">☕</span> المنتجات والعروض</button>
+    <button class="nv" data-p="control"><span class="e">🎛️</span> تحكّم فوري</button>
+  </div>
+
+  <div class="navgrp">
+    <div class="ttl">Website · إعدادات الموقع</div>
+    <button class="nv" data-p="links"><span class="e">⚙️</span> الطلبات والروابط</button>
     <button class="nv" data-p="service"><span class="e">📍</span> نقاط الخدمة والـQR</button>
-    <button class="nv" data-p="links"><span class="e">🔗</span> الروابط والإعدادات</button>
+  </div>
+
+  <div class="navgrp">
+    <div class="ttl">Cashier · الكاشير</div>
+    <button class="nv" data-p="pos"><span class="e">🧾</span> الكاشير والمتابعة</button>
   </div>
 
   <div class="foot">
@@ -320,15 +329,7 @@
       <div class="catalog-head"><div><h2>🗂️ أقسام المنيو</h2><div class="sub">استخدم الأسهم لترتيب الأقسام؛ أول قسم هنا يظهر أولًا للعميل.</div></div><button class="btn btn-p btn-s" id="addSection" type="button">+ إضافة قسم</button></div>
       <div id="liveSectionList" class="editor-list section-list"></div>
     </div>
-    <div class="card">
-      <h3>⚙️ استقبال الطلبات</h3>
-      <div class="settings-inline">
-        <label>عدد الطاولات<input id="liveTables" type="number" min="1" max="500"></label>
-        <label class="check-line"><input id="liveOrdering" type="checkbox"> استقبال الطلبات مفتوح</label>
-        <button class="btn btn-p btn-s" id="saveStoreSettings">حفظ الإعدادات</button>
-        <button class="btn btn-g btn-s danger-soft" id="clearOrders" type="button">تصفير الطلبات التجريبية</button>
-      </div>
-    </div>
+    <div class="note shared-note">أي تعديل هنا يظهر في منيو الموقع فورًا، وفي الكاشير خلال دقائق من غير أي خطوة إضافية.</div>
   </div>
 
   <!-- ---------- نقاط الخدمة والـ QR ---------- -->
@@ -352,8 +353,69 @@
     </div>
   </div>
 
+  <!-- ---------- الكاشير والمتابعة ---------- -->
+  <div class="pane" id="p-pos">
+    <div class="pos-state" id="posState" role="status">جاري قراءة بيانات الكاشير…</div>
+    <div class="grid g4" style="margin-bottom:16px">
+      <div class="kpi acc"><div class="lb">مبيعات الكاشير اليوم</div><div class="v"><span id="posNet">0</span><small> ر.س</small></div><div class="d" id="posNetD"></div></div>
+      <div class="kpi"><div class="lb">عدد الفواتير</div><div class="v" id="posCount">0</div><div class="d" id="posCountD"></div></div>
+      <div class="kpi am"><div class="lb">متوسط الفاتورة</div><div class="v"><span id="posAvg">0</span><small> ر.س</small></div><div class="d" id="posAvgD"></div></div>
+      <div class="kpi vi"><div class="lb">النقد المتوقع في الدرج</div><div class="v"><span id="posCash">—</span><small> ر.س</small></div><div class="d" id="posCashD"></div></div>
+    </div>
+    <div class="grid g2" style="margin-bottom:16px">
+      <div class="card">
+        <h2>💳 طرق الدفع اليوم</h2>
+        <div class="sub">من فواتير الكاشير المحفوظة على السيرفر</div>
+        <div class="rows" id="posPays"></div>
+      </div>
+      <div class="card">
+        <h3>📅 آخر ٧ أيام</h3>
+        <div class="sub">صافي مبيعات الكاشير لكل يوم عمل</div>
+        <div class="rows" id="posDays"></div>
+      </div>
+    </div>
+    <div class="grid g2" style="margin-bottom:16px">
+      <div class="card">
+        <h3>🧾 حالة الكاشير</h3>
+        <div class="sub">آخر نسخة محفوظة من جهاز الكاشير</div>
+        <div class="rows" id="posInfo"></div>
+      </div>
+      <div class="card">
+        <h3>⚙️ إعدادات الكاشير</h3>
+        <div class="sub">القيم الحالية على جهاز الكاشير. التعديل من الكاشير نفسه: Settings</div>
+        <div class="rows" id="posSettings"></div>
+        <div class="pos-links no-print">
+          <a class="btn btn-p btn-s" href="pos/app#settings" target="_blank" rel="noopener">فتح إعدادات الكاشير</a>
+          <a class="btn btn-g btn-s" href="pos/app" target="_blank" rel="noopener">فتح الكاشير</a>
+          <a class="btn btn-g btn-s" href="pos/kds?st=bar" target="_blank" rel="noopener">شاشة البار</a>
+          <a class="btn btn-g btn-s" href="pos/kds?st=kitchen" target="_blank" rel="noopener">شاشة المطبخ</a>
+          <a class="btn btn-g btn-s" href="pos/kiosk" target="_blank" rel="noopener">الكشك</a>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="catalog-head"><div><h3>📱 المتابعة من الجوال</h3><div class="sub">صفحة خفيفة للجوال: مبيعات اليوم، الوردية، الدرج، وطلبات الموقع. بنفس حساب الإدارة.</div></div>
+        <button class="btn btn-g btn-s" id="posRefresh" type="button">تحديث الآن</button></div>
+      <div class="pos-mobile">
+        <div id="posQr" class="pos-qr"></div>
+        <div><a class="mono" id="posMobileLink" href="live" target="_blank" rel="noopener"></a>
+          <p class="sub" style="margin-top:8px">امسح الكود بالجوال أو افتح الرابط، وأضفه للشاشة الرئيسية عشان يفتح زي التطبيق.</p>
+          <button class="btn btn-g btn-s" id="posCopy" type="button">نسخ الرابط</button></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ---------- الروابط ---------- -->
   <div class="pane" id="p-links">
+    <div class="card" style="margin-bottom:16px">
+      <h3>⚙️ استقبال الطلبات</h3>
+      <div class="settings-inline">
+        <label>عدد الطاولات<input id="liveTables" type="number" min="1" max="500"></label>
+        <label class="check-line"><input id="liveOrdering" type="checkbox"> استقبال الطلبات مفتوح</label>
+        <button class="btn btn-p btn-s" id="saveStoreSettings">حفظ الإعدادات</button>
+        <button class="btn btn-g btn-s danger-soft" id="clearOrders" type="button">تصفير الطلبات التجريبية</button>
+      </div>
+    </div>
     <div class="grid g2" style="margin-bottom:16px">
       <div class="card">
         <h2>🔗 الرابط النهائي</h2>
@@ -429,7 +491,9 @@
 <script defer src="assets/qr.js?v=20260925-custom-domain"></script>
 <script defer src="assets/backend.js?v=20260923-visual-order"></script>
 <script defer src="assets/sys.js?v=20260926-no-product-discounts"></script>
-<script defer src="assets/owner.js?v=20260924-final-url"></script>
+<script defer src="assets/owner.js?v=20261115-unified"></script>
 <script defer src="assets/owner-live.js?v=20260924-login-guard"></script>
+<script defer src="assets/pos-data.js?v=20261115-unified"></script>
+<script defer src="assets/owner-pos.js?v=20261115-unified"></script>
 </body>
 </html>

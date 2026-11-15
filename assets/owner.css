@@ -330,3 +330,17 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   .pane{display:block !important}
   body{background:#fff;color:#000}
 }
+
+/* ---- لوحة موحّدة: الأصناف، إعدادات الموقع، الكاشير ---- */
+.navgrp .ttl .ttl-note{display:block;margin-top:3px;font-size:10px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mint)}
+.shared-note{margin:0 0 4px}
+.pos-state{margin-bottom:16px;padding:12px 15px;border-radius:14px;border:1px solid var(--line-2);background:var(--card-2);font-size:13px;font-weight:600;line-height:1.7;color:var(--txt-2)}
+.pos-state.ok{border-color:rgba(90,124,70,.45);color:var(--green)}
+.pos-state.warn{border-color:rgba(133,84,20,.45);color:var(--amber-2)}
+.pos-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.pos-links .btn{text-decoration:none}
+.pos-mobile{display:grid;grid-template-columns:150px minmax(0,1fr);gap:18px;align-items:center;margin-top:14px}
+.pos-qr .qr-local svg{width:150px;height:150px;display:block}
+.pos-qr .qr-url{display:none}
+#posMobileLink{font-weight:700;color:var(--mint);word-break:break-all}
+@media(max-width:620px){.pos-mobile{grid-template-columns:1fr;justify-items:center;text-align:center}}

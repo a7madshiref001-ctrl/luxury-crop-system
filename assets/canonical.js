@@ -7,6 +7,7 @@
   if (local || host === "www.luxurycrop.site") return;
 
   var owner = /(?:^|\/)owner(?:\.html)?\/?$/i.test(w.location.pathname || "");
-  var target = FINAL_ORIGIN + (owner ? "/owner" : "/") + (w.location.search || "");
+  var live = /(?:^|\/)live(?:\.html)?\/?$/i.test(w.location.pathname || "");
+  var target = FINAL_ORIGIN + (owner ? "/owner" : live ? "/live" : "/") + (w.location.search || "");
   w.location.replace(target);
 })(window);

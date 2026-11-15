@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-t="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>محصول فاخر — المتابعة</title>
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
+<meta name="theme-color" content="#F2ECDC">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="محصول فاخر">
+<link rel="canonical" href="https://www.luxurycrop.site/live">
+<script src="assets/canonical.js?v=20261115-unified"></script>
+<link rel="icon" href="assets/logo.png">
+<link rel="apple-touch-icon" href="assets/logo.png">
+<link rel="stylesheet" href="assets/fonts.css?v=20260920-qa">
+<link rel="stylesheet" href="assets/core.css?v=20260920-qa">
+<link rel="stylesheet" href="assets/live.css?v=20261115-unified">
+</head>
+<body class="lv-pending">
+
+<section id="lvGate" class="lv-gate" aria-labelledby="lvGateTitle">
+  <form id="lvLogin" class="lv-login" novalidate>
+    <img src="assets/logo.png" alt="محصول فاخر" width="72" height="72">
+    <h1 id="lvGateTitle">Live <small>متابعة المحل</small></h1>
+    <p>ادخل بحساب الإدارة عشان تشوف مبيعات اليوم والوردية وطلبات الموقع.</p>
+    <label>البريد الإلكتروني<input id="lvEmail" type="email" inputmode="email" autocomplete="username" maxlength="180" required></label>
+    <label>كلمة المرور<input id="lvPassword" type="password" autocomplete="current-password" maxlength="128" required></label>
+    <button class="btn btn-p btn-block" type="submit" id="lvLoginBtn">دخول</button>
+    <div id="lvLoginError" class="lv-error" role="alert" aria-live="polite"></div>
+  </form>
+</section>
+
+<div id="lvApp" hidden>
+  <header class="lv-top">
+    <div class="lv-brand"><img src="assets/logo-mark.png" alt="" width="34" height="34"><div><b>LUXURY CROP</b><span id="lvDay">—</span></div></div>
+    <button class="lv-refresh" id="lvRefresh" type="button" aria-label="تحديث">↻</button>
+  </header>
+  <div class="lv-status" id="lvStatus" role="status">جاري التحميل…</div>
+
+  <main class="lv-main">
+    <section class="lv-sec" aria-labelledby="lvS1">
+      <div class="lv-h"><i>01</i><div><h2 id="lvS1">Today</h2><span>مبيعات اليوم</span></div></div>
+      <div class="lv-hero">
+        <div class="lv-hero__l">صافي مبيعات الكاشير</div>
+        <div class="lv-hero__v"><span id="lvNet">0</span><small>ر.س</small></div>
+        <div class="lv-hero__d" id="lvNetD"></div>
+      </div>
+      <div class="lv-kpis">
+        <div class="lv-kpi"><span>الفواتير</span><b id="lvCount">0</b></div>
+        <div class="lv-kpi"><span>متوسط الفاتورة</span><b id="lvAvg">0</b></div>
+        <div class="lv-kpi"><span>المرتجعات</span><b id="lvRefunds">0</b></div>
+      </div>
+      <div class="lv-week" id="lvWeek" aria-label="آخر ٧ أيام"></div>
+    </section>
+
+    <section class="lv-sec" aria-labelledby="lvS2">
+      <div class="lv-h"><i>02</i><div><h2 id="lvS2">Now</h2><span>الوضع الحالي</span></div></div>
+      <div class="lv-list" id="lvNow"></div>
+    </section>
+
+    <section class="lv-sec" aria-labelledby="lvS3">
+      <div class="lv-h"><i>03</i><div><h2 id="lvS3">Payments</h2><span>طرق الدفع اليوم</span></div></div>
+      <div class="lv-list" id="lvPays"></div>
+    </section>
+
+    <section class="lv-sec" aria-labelledby="lvS4">
+      <div class="lv-h"><i>04</i><div><h2 id="lvS4">Top items</h2><span>الأكثر مبيعًا اليوم</span></div></div>
+      <div class="lv-list" id="lvTop"></div>
+    </section>
+
+    <section class="lv-sec" aria-labelledby="lvS5">
+      <div class="lv-h"><i>05</i><div><h2 id="lvS5">Website orders</h2><span>طلبات الموقع</span></div></div>
+      <label class="lv-switch"><span><b>استقبال طلبات الموقع</b><small id="lvOrderingNote">—</small></span><input id="lvOrdering" type="checkbox" role="switch"></label>
+      <div class="lv-chips" id="lvSiteCounts"></div>
+      <div class="lv-list" id="lvSite"></div>
+    </section>
+
+    <nav class="lv-links" aria-label="روابط">
+      <a class="btn btn-p btn-block" href="owner">Admin panel <small>لوحة الإدارة الكاملة</small></a>
+      <a class="btn btn-g btn-block" href="pos/app">Cashier <small>الكاشير</small></a>
+      <button class="btn btn-g btn-block" id="lvLogout" type="button">تسجيل الخروج</button>
+    </nav>
+  </main>
+  <footer class="lv-foot"><span>Built by ATHR</span></footer>
+</div>
+
+<script defer src="data/backend-config.js?v=20260925-custom-domain"></script>
+<script defer src="assets/vendor/supabase-2.116.0.js?v=2.116.0"></script>
+<script defer src="assets/backend.js?v=20260923-visual-order"></script>
+<script defer src="assets/pos-data.js?v=20261115-unified"></script>
+<script defer src="assets/live.js?v=20261115-unified"></script>
+</body>
+</html>

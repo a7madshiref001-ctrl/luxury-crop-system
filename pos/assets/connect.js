@@ -123,6 +123,9 @@
       }
       next[p.id] = [price, on ? 1 : 0];
     });
+    // صنف اتشال من الموقع نهائيًا: يتوقف في الكاشير
+    const ids = new Set(r.data.map((p) => p.id));
+    D.PRODUCTS.forEach((p) => { if (p._kept && !ids.has(p.id) && st.avail[p.id] !== false) ch.push(['avail', p.id, false]); });
     if (!ch.length && JSON.stringify(next) === JSON.stringify(seen)) return 0;
     D.mutate((s) => {
       ch.forEach(([k, id, v]) => {
@@ -270,12 +273,16 @@
     });
   }
   function ago(t) { if (!t) return 'لسه'; const n = Math.round((Date.now() - t) / 60000); return n < 1 ? 'الآن' : n < 60 ? `من ${n} دقيقة` : new Date(t).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'short', timeStyle: 'short' }); }
+  // روابط لوحة الإدارة: الأصناف وإعدادات الموقع بتتعدّل من هناك، والكاشير بيتبعها لوحده
+  const ADMIN = C.admin || '', MOBILE = C.mobile || '';
+  const LINKS = ADMIN ? `<div class="set-row" style="margin-top:14px"><span><b>${bi('Menu & website', 'الأصناف وإعدادات الموقع')}</b><small>الأصناف والأسعار والعروض بتتعدّل من لوحة الإدارة، وبتظهر هنا وفي الموقع مع بعض</small></span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn--ghost btn--sm" href="${esc(ADMIN)}" target="_blank" rel="noopener">${bi('Admin panel', 'لوحة الإدارة')}</a>${MOBILE ? `<a class="btn btn--ghost btn--sm" href="${esc(MOBILE)}" target="_blank" rel="noopener">${bi('Phone view', 'متابعة من الجوال')}</a>` : ''}</div>` : '';
   function paint() {
     if (!box || !box.isConnected) return;
     if (!D.REAL) { box.innerHTML = '<p class="muted" style="font-size:12px;margin-top:8px">وضع التدريب مابيتحفظش على السيرفر.</p>'; return; }
     if (!cloud.on) {
       box.innerHTML = `<div class="set-row"><span><b>حفظ البيانات على السيرفر</b><small>مقفول. البيانات على الجهاز ده بس لحد ما تسجّل الدخول</small></span><span class="pill pill--amber">غير مربوط</span></div>
-        <button class="btn btn--ink btn--block" data-cx="in">${bi('Sign in & connect', 'تسجيل الدخول وتشغيل الربط')}</button>`;
+        <button class="btn btn--ink btn--block" data-cx="in">${bi('Sign in & connect', 'تسجيل الدخول وتشغيل الربط')}</button>${LINKS}`;
       return;
     }
     const pill = { ok: ['pill--go', 'محفوظ'], saving: ['', 'بيحفظ'], offline: ['pill--amber', 'مفيش نت'], error: ['pill--amber', 'متوقف'], conflict: ['pill--amber', 'محتاج قرار'] }[cloud.state] || ['', ''];
@@ -288,7 +295,7 @@
         <button class="btn btn--ghost btn--block" data-cx="take">${bi('Use this device', 'خلّي بيانات الجهاز ده هي الأساسية')}</button></div>`;
     }
     box.innerHTML = `<div class="set-row"><span><b>حفظ البيانات على السيرفر</b><small>${sub}</small></span><span class="pill ${pill[0]}">${pill[1]}</span></div>${extra}
-      <div style="display:flex;gap:8px;margin-top:10px">${cloud.state === 'conflict' ? '' : `<button class="btn btn--ghost btn--sm" data-cx="now">${bi('Save now', 'احفظ الآن')}</button>`}<button class="btn btn--ghost btn--sm" data-cx="out">${bi('Sign out', 'خروج')}</button></div>`;
+      <div style="display:flex;gap:8px;margin-top:10px">${cloud.state === 'conflict' ? '' : `<button class="btn btn--ghost btn--sm" data-cx="now">${bi('Save now', 'احفظ الآن')}</button>`}<button class="btn btn--ghost btn--sm" data-cx="out">${bi('Sign out', 'خروج')}</button></div>${LINKS}`;
   }
   function onBox(e) {
     const b = e.target.closest('[data-cx]'); if (!b) return;
@@ -308,6 +315,15 @@
     status: () => Object.assign({}, cloud),
     test: /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? { mapOrder, syncCatalog, flushSales, flushState, pump, start, restore, reset() { client = null; started = false; paused = false; lastRev = -1; lastDay = ''; lastState = 0; fails = 0; } } : null,
   };
+
+  // منيو الموقع اتغيّر (صنف جديد، اسم، قسم): الشاشة تتحدّث من غير إعادة فتح
+  window.addEventListener('darj:catalog', (e) => {
+    try {
+      if (!D.state().setup) return;
+      D.mutate(() => {}, 'sync');
+      D.toast('المنيو اتحدّث من الموقع', `${(e.detail && e.detail.changes) || 0} تعديل في الأصناف والأقسام`, { ms: 5000 });
+    } catch (er) { /* */ }
+  });
 
   /* ---------- جهاز أو تابة جديدة: دخول، وبعدها بيانات المحل تتحمّل من السيرفر ---------- */
   async function latestCopy(c) {
