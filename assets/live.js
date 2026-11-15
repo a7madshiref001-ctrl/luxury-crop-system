@@ -8,7 +8,7 @@
   var money = function (v) { return Number(v || 0).toLocaleString("en-US", { maximumFractionDigits: 2 }); };
   var STATUS = { new: "جديد", preparing: "قيد التحضير", ready: "جاهز", completed: "مكتمل", cancelled: "ملغي" };
   var busy = false, timer = null, loadedAt = 0, names = {}, settings = null, unsub = null;
-  var invAll = false, invOpen = {}, lastPos = null;
+  var invAll = false, invOpen = {}, lastPos = null, again = false, rt = null, rtT = 0, rtOn = false, rtAt = 0;
   var POS_STATUS = { new: "بانتظار الدفع", prep: "قيد التحضير", ready: "جاهز", done: "تم التسليم", rejected: "ملغي", cancelled: "ملغي" };
   var STATION = { bar: "الباريستا", kitchen: "المطبخ" };
 
@@ -70,7 +70,7 @@
     if (!o.hasCopy) status("الكاشير غير مربوط بالسيرفر بعد. افتح الكاشير على جهاز المحل بحساب المدير واضغط «تسجيل الدخول والربط» في الشريط الأسود أسفل الشاشة (مرة واحدة فقط)، وبعدها تظهر الأرقام هنا تلقائيًا.", "warn");
     else {
       var stale = Date.now() - o.savedAt > 15 * 60000;
-      status((stale ? "آخر حفظ من الكاشير " : "الكاشير متصل · آخر حفظ ") + ago(o.savedAt) + (o.today ? "" : " · آخر يوم عمل مسجّل " + o.day), stale ? "warn" : "ok");
+      status((stale ? "آخر حفظ من الكاشير " : "الكاشير متصل · آخر حفظ ") + ago(o.savedAt) + (o.today ? "" : " · آخر يوم عمل مسجّل " + o.day) + (rtOn ? " · مباشر" : ""), stale ? "warn" : "ok");
     }
     var s = o.sum;
     $("lvNet").textContent = money(s.net);
@@ -143,7 +143,7 @@
     } catch (_) { }
   }
   async function load() {
-    if (busy) return;
+    if (busy) { again = true; return; }
     busy = true; $("lvRefresh").classList.add("spin");
     try {
       if (!Object.keys(names).length) await loadNames();
@@ -158,7 +158,25 @@
     } catch (e) {
       var denied = e && (e.code === "42501" || /permission|jwt|not authorized/i.test(String(e.message || "")));
       status(denied ? "الحساب الحالي غير مصرّح له بقراءة البيانات." : "تعذّر تحميل البيانات. تأكد من الإنترنت وحاول مرة ثانية.", "warn");
-    } finally { busy = false; $("lvRefresh").classList.remove("spin"); }
+    } finally { busy = false; $("lvRefresh").classList.remove("spin"); if (again) { again = false; w.setTimeout(load, 150); } }
+  }
+
+  /* لحظي: أي فاتورة أو حفظ جديد من الكاشير على السيرفر يوصل هنا فورًا (Realtime) من غير ما نستنى الدورة.
+     لو الاتصال اللحظي وقع، الدورة كل 14 ثانية تفضل شغالة كاحتياطي. */
+  function listenPos() {
+    if (rt) { try { B.init().removeChannel(rt); } catch (_) { } rt = null; }
+    try {
+      var c = B.init(), kick = function () { rtAt = Date.now(); w.clearTimeout(rtT); rtT = w.setTimeout(load, 250); };
+      var f = "store_key=eq." + P.STORE;
+      rt = c.channel("live-pos")
+        .on("postgres_changes", { event: "*", schema: "public", table: "pos_sales", filter: f }, kick)
+        .on("postgres_changes", { event: "*", schema: "public", table: "pos_state", filter: f }, kick)
+        .subscribe(function (s) { rtOn = s === "SUBSCRIBED"; if (lastPos) paintLiveTag(); });
+    } catch (_) { rtOn = false; }
+  }
+  function paintLiveTag() {
+    var el = $("lvStatus"); if (!el || !lastPos || !lastPos.hasCopy || /مباشر/.test(el.textContent)) return;
+    if (rtOn) el.textContent += " · مباشر";
   }
   async function toggleOrdering() {
     var box = $("lvOrdering");
@@ -176,6 +194,7 @@
     await load();
     if (unsub) unsub();
     unsub = B.subscribeOrders(function () { w.setTimeout(load, 500); });
+    listenPos();
     clearInterval(timer);
     timer = setInterval(function () { if (!d.hidden && Date.now() - loadedAt > 14000) load(); }, 5000);
   }

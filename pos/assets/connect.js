@@ -14,7 +14,7 @@
   const SIG_KEY = BASE + ':sig';
   const OUT_KEY = BASE + ':out';
   const VERSION = C.version || '';
-  const STATE_EVERY = 2 * 60000;
+  const STATE_EVERY = 15000; // صفحة الجوال بتسمع التغيير لحظيًا، فالحالة (وردية، درج، أصناف موقوفة) بتتحفظ كل 15 ثانية لو اتغيّرت
   const TICK = 60000;
   const STATUS_OUT = { prep: 'preparing', ready: 'ready', done: 'completed', rejected: 'cancelled', cancelled: 'cancelled' };
   const esc = D.esc;
@@ -167,7 +167,7 @@
   const hash = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36) + ':' + s.length; };
   function setCloud(p) { Object.assign(cloud, p); paint(); }
   function schedule(ms) { clearTimeout(timer); timer = setTimeout(pump, ms); }
-  function soon() { if (!soonT) soonT = setTimeout(() => { soonT = 0; schedule(0); }, 3000); }
+  function soon() { if (!soonT) soonT = setTimeout(() => { soonT = 0; schedule(0); }, 900); }
 
   async function flushSales(c) {
     const s = D.state();
