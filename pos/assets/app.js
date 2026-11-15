@@ -2117,12 +2117,28 @@
       <div class="set-row"><span><b>الدفع عند الكاشير</b><small>الطلب يصل هنا في Orders، وبعد التحصيل ينتقل للتحضير تلقائيًا</small></span>${sw('counter', k.counter)}</div>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><a class="btn btn--ghost btn--sm" href="kiosk.html" target="_blank">${I('kiosk', 'sm')}${bi('Open kiosk', 'افتح الكشك هنا')}</a>${LNK().ok ? `<button class="btn btn--ink btn--sm" data-pair="kiosk">${I('qr', 'sm')}${bi('Pair an iPad', 'اربط آيباد')}</button>` : ''}</div></div>`;
   }
+  /* متابعة المدير من الجوال: صفحة على الموقع بتسمع الكاشير لحظيًا. بتفتح بحساب المدير (مش بمفتاح الربط)، فالـQR هنا لينك عادي بدون أسرار */
+  const phoneUrl = () => { const p = (D.CFG && D.CFG.phoneUrl) || ''; if (!p) return ''; try { return new URL(p, location.href).href; } catch (e) { return ''; } };
+  function phoneRow() {
+    if (!phoneUrl() || !D.REAL) return '';
+    return `<div class="devs" style="margin-top:10px"><div class="devx"><span class="dev__i">${I('user')}</span><span class="devx__b">${bi('Manager phone', 'متابعة المدير من الجوال')}<small>المبيعات والفواتير لحظة بلحظة من أي مكان — يدخل بحساب المدير</small></span><span class="devx__a"><a class="btn btn--ghost btn--sm" href="${phoneUrl()}" target="_blank">${bi('Open', 'هنا')}</a><button class="btn btn--ink btn--sm" data-phone="1">${I('qr', 'sm')}${bi('Link phone', 'ربط الجوال')}</button></span></span></div></div>`;
+  }
+  function phoneModal() {
+    const url = phoneUrl();
+    const m = D.modal(`${D.head(bi('Manager phone', 'متابعة المدير من الجوال'), 'امسح الكود من جوال المدير')}
+      <div class="modal__b"><div class="pairq"><div class="pairq__qr">${D.qrSVG(url)}</div>
+        <ol class="pairq__steps"><li><b>افتح الكاميرا</b> على جوال المدير وامسح الكود.</li><li><b>سجّل الدخول</b> بحساب المدير (نفس البريد وكلمة السر) مرة واحدة، وتبقى مفتوحة.</li><li><b>من Safari أو Chrome:</b> «إضافة إلى الشاشة الرئيسية» لتفتح كتطبيق.</li></ol></div>
+        <div class="blind" style="margin-top:12px">${I('link', 'sm')}<span>بتظهر كل فاتورة وتغيير في الوردية على الجوال لحظة تسجيلها، بشرط أن الكاشير مربوط بالسيرفر.</span></div></div>
+      <div class="modal__f"><button class="btn btn--ghost" id="cpp">${I('link', 'sm')}${bi('Copy link', 'انسخ الرابط')}</button><button class="btn btn--ink" data-close>${bi('Done', 'تم')}</button></div>`, { cls: 'modal--sm' });
+    $('#cpp', m).addEventListener('click', () => { try { navigator.clipboard.writeText(url); D.toast('تم نسخ الرابط', 'افتحه على الجوال', { ic: 'link' }); } catch (e) { /* */ } });
+  }
   function devicesCard() {
     const L = LNK();
     const stTxt = !L.ok ? ['', 'على نفس الجهاز فقط'] : L.status === 'on' ? ['go', 'Live · الربط يعمل'] : L.status === 'err' ? ['red', 'لا يوجد اتصال'] : ['amber', 'جارٍ الاتصال…'];
     return `<div class="card card--wide" id="devCard"><div class="card__h"><h3><span class="label">Devices · Link</span>الشاشات والأجهزة المربوطة</h3><span class="pill${stTxt[0] ? ' pill--' + stTxt[0] : ''}" id="lnkSt">${L.status === 'on' ? '<i class="dot pulse"></i>' : ''}${stTxt[1]}</span></div>
       <div class="blind" style="margin-bottom:12px">${I('link', 'sm')}<span>${L.ok ? 'كل شاشة تُربط مرة واحدة: اضغط <b>Pair</b> وامسح الكود من الجهاز الآخر (آيباد أو تابلت أو شاشة). بعدها يصلها كل طلب لحظة بلحظة، ما دام الكاشير مفتوحًا والإنترنت متصلًا.' : 'الشاشات تعمل كتبويبات على نفس جهاز الكاشير. الربط بين أجهزة مختلفة يتفعّل مع إعداد الربط (connect).'}</span></div>
       <div class="devs">${SCREENS.map((sc) => { const on = peersOf(sc).length; return `<div class="devx${on ? ' on' : ''}"><span class="dev__i">${I(sc.ic)}</span><span class="devx__b">${bi(sc.en, sc.ar)}<small>${sc.sub}</small><span class="devx__st">${on ? `<i class="dot pulse"></i> ${on === 1 ? 'جهاز واحد متصل' : on + ' أجهزة متصلة'}` : L.ok ? 'غير متصلة' : ''}</span></span><span class="devx__a"><a class="btn btn--ghost btn--sm" href="${sc.page}" target="_blank">${bi('Open', 'هنا')}</a>${L.ok ? `<button class="btn btn--ink btn--sm" data-pair="${sc.id}">${I('qr', 'sm')}${bi('Pair', 'ربط جهاز')}</button>` : ''}</span></div>`; }).join('')}</div>
+      ${phoneRow()}
       ${L.ok ? `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap"><small class="muted">إذا ضاع جهاز أو تغيّر: «إلغاء ربط الكل» يغيّر المفتاح، وتحتاج كل الشاشات إلى ربط من جديد.</small><button class="btn btn--danger btn--sm" id="lnkRot">${bi('Unlink all', 'إلغاء ربط الكل')}</button></div>` : ''}</div>`;
   }
   function pairModal(id) {
@@ -2149,6 +2165,7 @@
   const prepCards = () => soundCard() + routesCard() + kioskCard() + devicesCard();
   function wireDevices(root) {
     root.querySelectorAll('#devCard [data-pair], [data-pair="kiosk"]').forEach((b) => { if (b._w) return; b._w = 1; b.addEventListener('click', () => pairModal(b.dataset.pair)); });
+    root.querySelectorAll('[data-phone]').forEach((b) => { if (b._w) return; b._w = 1; b.addEventListener('click', phoneModal); });
     const rot = root.querySelector('#lnkRot');
     if (rot && !rot._w) { rot._w = 1; rot.addEventListener('click', async () => { const u = await D.approve('settings', 'إلغاء ربط كل الشاشات', me); if (!u) return; LNK().rotate(); D.toast('تم إلغاء ربط كل الشاشات', 'اربط كل شاشة من جديد عبر Pair', { ic: 'link' }); }); }
   }
