@@ -1,5 +1,5 @@
 /* Network first, so the cashier always runs the newest version; the saved copy is used only without internet. */
-const CACHE = 'lcpos-v14';
+const CACHE = 'lcpos-v15';
 const WAIT_MS = 4000;
 const ROOT = new URL(self.registration.scope).pathname;
 self.addEventListener('install', () => self.skipWaiting());

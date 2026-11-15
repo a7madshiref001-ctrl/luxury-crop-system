@@ -274,9 +274,9 @@
   }
   function ago(t) { if (!t) return 'لسه'; const n = Math.round((Date.now() - t) / 60000); return n < 1 ? 'الآن' : n < 60 ? `من ${n} دقيقة` : new Date(t).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'short', timeStyle: 'short' }); }
   // روابط لوحة الإدارة: الأصناف وإعدادات الموقع بتتعدّل من هناك، والكاشير بيتبعها لوحده
-  const ADMIN = C.admin || '', MOBILE = C.mobile || '';
-  const LINKS = ADMIN ? `<div class="set-row" style="margin-top:14px"><span><b>${bi('Menu & website', 'الأصناف وإعدادات الموقع')}</b><small>الأصناف والأسعار والعروض بتتعدّل من لوحة الإدارة، وبتظهر هنا وفي الموقع مع بعض</small></span></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn--ghost btn--sm" href="${esc(ADMIN)}" target="_blank" rel="noopener">${bi('Admin panel', 'لوحة الإدارة')}</a>${MOBILE ? `<a class="btn btn--ghost btn--sm" href="${esc(MOBILE)}" target="_blank" rel="noopener">${bi('Phone view', 'متابعة من الجوال')}</a>` : ''}</div>` : '';
+  const MOBILE = C.mobile || '';
+  const LINKS = `<div class="set-row" style="margin-top:14px"><span><b>${bi('Menu & website', 'الأصناف وإعدادات الموقع')}</b><small>من صفحة Website في القائمة (للمدير فقط). أي تعديل هناك يظهر في الموقع والكاشير مع بعض</small></span></div>
+      ${MOBILE ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn--ghost btn--sm" href="${esc(MOBILE)}" target="_blank" rel="noopener">${bi('Phone view', 'متابعة من الجوال')}</a></div>` : ''}`;
   function paint() {
     if (!box || !box.isConnected) return;
     if (!D.REAL) { box.innerHTML = '<p class="muted" style="font-size:12px;margin-top:8px">وضع التدريب مابيتحفظش على السيرفر.</p>'; return; }
@@ -313,6 +313,10 @@
     enabled: !!C.enabled,
     panel(el, me) { box = el; boxMe = me; if (!el.dataset.cx) { el.dataset.cx = '1'; el.addEventListener('click', onBox); } paint(); },
     status: () => Object.assign({}, cloud),
+    // لصفحة إدارة الموقع: نفس اتصال الكاشير، ومعرفة هل الحساب الحالي حساب إدارة
+    client: init,
+    access: async () => { const c = await init(); const r = await c.rpc('pos_access'); return r.error ? null : r.data; },
+    resync: () => { if (cloud.on) syncCatalog().catch(() => {}); },
     test: /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? { mapOrder, syncCatalog, flushSales, flushState, pump, start, restore, reset() { client = null; started = false; paused = false; lastRev = -1; lastDay = ''; lastState = 0; fails = 0; } } : null,
   };
 

@@ -34,6 +34,9 @@
     { id: 'team', en: 'Team', ar: 'الفريق', ic: 'shield', perm: 'team' },
     { id: 'settings', en: 'Settings', ar: 'الإعدادات', ic: 'gear', perm: 'settings' },
   ];
+  // صفحات إضافية من نسخة العميل (window.DARJ_PAGES): بتظهر في القائمة قبل الإعدادات وبنفس نظام الصلاحيات
+  const EXT = (window.DARJ_PAGES || []).filter((p) => p && p.id && typeof p.render === 'function' && !ROUTES.some((r) => r.id === p.id));
+  EXT.forEach((p) => ROUTES.splice(ROUTES.length - 1, 0, { id: p.id, en: p.en || p.id, ar: p.ar || '', ic: p.ic || 'globe', perm: p.perm || 'settings' }));
   const hash0 = ((location.hash || '#sell').slice(1).split('?')[0] || 'sell').split('/');
   let route = hash0[0];
   let setTab = hash0[1] || ''; // القسم المفتوح جوه الإعدادات (app.html#settings/receipt)
@@ -2403,6 +2406,8 @@
     team: { render: renderTeam, live: 1 },
     settings: { render: renderSettings },
   };
+
+  EXT.forEach((p) => { VIEWS[p.id] = { render: (view) => p.render(view, { me: () => me, go }) }; });
 
   /* ---------- live wiring ---------- */
   const seenNew = new Set();

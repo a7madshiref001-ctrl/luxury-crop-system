@@ -45,3 +45,40 @@
 
 .top__brand .brand{white-space:nowrap}
 @media (max-width:640px){.top__brand .brand__word{font-size:14px}.top__brand .brand__ar{display:none}}
+
+/* ---- Website: إدارة الموقع من جوّه الكاشير ---- */
+.adm-tools{display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr);gap:8px;margin-bottom:10px}
+.adm-list{display:grid}
+.adm-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line-2);min-width:0}
+.adm-row:last-child{border-bottom:0}
+.adm-row.off .adm-n,.adm-row.off .adm-thumb{opacity:.5}
+.adm-thumb{width:44px;height:44px;border-radius:12px}
+.adm-n{flex:1;min-width:0}
+.adm-n b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adm-n small{display:block;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adm-a{display:flex;align-items:center;gap:8px;flex:none}
+.adm-sw{display:flex;align-items:center;gap:6px}
+.adm-sw small{font-size:11.5px;color:var(--muted);min-width:34px;text-align:end}
+.adm-move{display:flex;gap:2px}
+.adm-move .icon-btn{width:32px;height:32px;font-size:16px;font-weight:700}
+.adm-move .icon-btn[disabled]{opacity:.25;pointer-events:none}
+.adm-hint{font-size:12px;margin-top:10px}
+.adm-empty{padding:18px 0;color:var(--muted);font-size:13px}
+.adm-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.adm-inline{display:flex;align-items:center;gap:8px}
+.adm-inline .input{width:92px}
+.adm-login{max-width:420px}
+.adm-image{display:flex;align-items:center;gap:12px}
+.adm-preview{flex:none;width:84px;height:84px;border-radius:16px;background:var(--paper-2) center/cover no-repeat;display:grid;place-items:center;font-size:11px;color:var(--muted);text-align:center;padding:6px}
+.adm-file{min-width:0;font-size:12.5px}
+.adm-qr{display:grid;place-items:center}
+.adm-qr svg{width:min(260px,70vw);height:auto;border-radius:12px;background:#fff}
+.adm-url{margin-top:10px;font-size:12px;text-align:center;word-break:break-all;color:var(--ink-2)}
+.adm-form .select{height:44px}
+@media (max-width:640px){
+  .adm-tools{grid-template-columns:1fr}
+  .adm-row{flex-wrap:wrap}
+  .adm-n{flex-basis:calc(100% - 60px)}
+  .adm-a{flex-basis:100%;justify-content:flex-end;flex-wrap:wrap}
+}
+@media (max-width:640px){.set-row:has(.adm-a){flex-wrap:wrap}.set-row:has(.adm-a) .adm-a{flex-basis:100%}}
