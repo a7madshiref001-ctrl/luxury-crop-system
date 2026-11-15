@@ -23,7 +23,7 @@ window.DARJ_CONFIG = {
   tour: { drink: '170284', drink2: '170283', food: '170309', food2: '193000', dessert: '170313', mod: 'addon_hot_1', drinkName: 'سبانش لاتيه', foodName: 'كوكيز فانيليا', modName: 'الحليب النباتي' },
   connect: {
     enabled: true,
-    version: '16',
+    version: '17',
     url: 'https://qckjfyupxwctfizqdbxe.supabase.co',
     key: 'sb_publishable_zN4rosy4qTS9Nbyx1iFxYw_Azx-lYnc', // مفتاح عام (نفس اللي في الموقع) — الحماية في RLS
     pollMs: 5000,
