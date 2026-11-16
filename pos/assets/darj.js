@@ -17,7 +17,19 @@
   const KEY = BASE + (D.LIVE ? (train ? ':train' : ':live') : '') + ':state';
   const CART_KEY = BASE + ':cart';
   const LEAD_KEY = BASE + ':leader';
-  D.setTraining = (on) => { try { localStorage.setItem(BASE + ':train', on ? '1' : '0'); if (!on && D.TRAIN) localStorage.setItem(BASE + ':trainEnd', String(Date.now())); sessionStorage.removeItem('darj:me'); } catch (e) { /* */ } location.reload(); };
+  /* كاشير عن بُعد: الكاشير (app.html) مفتوح على جهاز مربوط بـQR (جوال المدير مثلًا).
+     الجهاز ده مالوش بيانات خاصة: بياخد نسخة كاملة من كاشير المحل، وكل تعديل بيتبعت له ويتنفّذ هناك.
+     الجهاز اللي عمل مفتاح الربط بنفسه هو الكاشير الأصلي، فعمره ما يتحول لكاشير عن بُعد. */
+  D.REMOTE = false;
+  D.pairedRemote = () => {
+    try {
+      const p = JSON.parse(localStorage.getItem(BASE + ':pair') || 'null');
+      if (!p || !p.s) return false;
+      return localStorage.getItem(BASE + ':linksec') !== p.s;
+    } catch (e) { return false; }
+  };
+  const remoteNo = (what) => { if (D.toast) D.toast('غير متاح من الجوال', what || 'هذا الإجراء من جهاز الكاشير نفسه فقط', { warn: 1, ic: 'lock' }); };
+  D.setTraining = (on) => { if (D.REMOTE) { remoteNo('وضع التدريب يتغيّر من جهاز الكاشير نفسه'); return; } try { localStorage.setItem(BASE + ':train', on ? '1' : '0'); if (!on && D.TRAIN) localStorage.setItem(BASE + ':trainEnd', String(Date.now())); sessionStorage.removeItem('darj:me'); } catch (e) { /* */ } location.reload(); };
   const TAB = Math.random().toString(36).slice(2, 9);
 
   /* ---------- store ---------- */
@@ -673,8 +685,10 @@
   D.exVat = (p) => (D.vatOn() ? p / 1.15 : p);
   D.noteName = (o) => (D.orderVat(o) ? { ar: 'إشعار دائن', en: 'Credit note' } : { ar: 'إشعار مرتجع', en: 'Refund note' });
   D.mutate = (fn, why) => { if (!S) D.load(); if (D.SAT) { const r = fn(S); S.rev = (S.rev || 0) + 1; emit(why || 'local'); return r; } const fresh = unsaved ? null : read(); if (fresh && fresh.day === S.day && (fresh.rev || 0) >= (S.rev || 0)) { S = fresh; bind(); } const r = fn(S); bind(); S.rev = (S.rev || 0) + 1; write(S); emit(why || 'local'); return r; };
-  D.installState = (st, quiet) => { S = st; write(S); bind(); if (!quiet) emit('reset'); };
-  D.reset = () => { try { localStorage.removeItem(KEY); localStorage.removeItem(CART_KEY); } catch (e) { /* */ } S = D.REAL ? emptyLive(Date.now()) : seed(Date.now()); write(S); bind(); emit('reset'); };
+  // كاشير عن بُعد: النسخة جاية من كاشير المحل — بتتركّب في الذاكرة بس
+  D.satSet = (st, why) => { S = st; bind(); if (why) emit(why); };
+  D.installState = (st, quiet) => { if (D.REMOTE) { remoteNo('استعادة النسخ من جهاز الكاشير نفسه'); return; } S = st; write(S); bind(); if (!quiet) emit('reset'); };
+  D.reset = () => { if (D.REMOTE) { remoteNo(); return; } try { localStorage.removeItem(KEY); localStorage.removeItem(CART_KEY); } catch (e) { /* */ } S = D.REAL ? emptyLive(Date.now()) : seed(Date.now()); write(S); bind(); emit('reset'); };
   window.addEventListener('storage', (e) => {
     if (D.SAT) return;
     if (e.key === KEY && e.newValue && !unsaved) { try { const n = JSON.parse(e.newValue); const same = S && n.rev === S.rev && n.day === S.day; S = n; bind(); if (!same) emit('remote'); } catch (er) { /* */ } }
@@ -781,6 +795,14 @@
       D.pinOk('station');
       D.mutate(() => D.log(u.id, 'login', `تسجيل دخول — ${a.where || 'شاشة'} (${D.ROLES[u.role].ar})`), 'login');
       return { ok: 1, u: { id: u.id, name: u.name, short: u.short, role: u.role, c: u.c } };
+    },
+    // موافقة مشرف من كاشير عن بُعد: الـPIN بيتراجع هنا عند الكاشير، والجوال مابيشوفش أرقام حد
+    pincheck: (a) => {
+      const held = D.pinWait('approve'); if (held) return { ok: 0, wait: held };
+      const u = (D.STAFF || []).find((x) => !x.off && x.pin && x.pin === String(a.pin || '') && D.can(x, a.perm) === 1);
+      if (!u) return { ok: 0, wait: D.pinFail('approve', null, `موافقة من الجوال: ${a.label || ''}`) || 0 };
+      D.pinOk('approve');
+      return { ok: 1, u: { id: u.id } };
     },
     signout: (a) => { if (a.uid) D.mutate(() => D.log(a.uid, 'login', `تسجيل خروج — ${a.where || 'شاشة'}`), 'logout'); return { ok: 1 }; },
     line: (a) => D.mutate((s) => { const o = findO(s, a.id); if (!o) return; o.lineDone = (o.lineDone || []).filter((x) => x !== a.i); if (a.done) o.lineDone.push(a.i); }, 'kds'),
@@ -1275,6 +1297,15 @@
       say('');
       if (n === 'c') pin = ''; else if (n === 'b') pin = pin.slice(0, -1); else if (pin.length < 4) pin += n;
       paint();
+      if (pin.length === 4 && D.REMOTE) {
+        const typed = pin;
+        Promise.resolve(D.act('pincheck', { pin: typed, perm, label })).then((res) => {
+          if (res && res.ok) { setTimeout(() => { resolve(D.staff(res.u.id)); m.close('ok'); }, 140); return; }
+          dots.classList.add('err'); setTimeout(() => { dots.classList.remove('err'); pin = ''; paint(); }, 420);
+          say(!res ? 'الكاشير غير متصل الآن' : res.wait ? D.pinMsg(res.wait) : 'الرقم غير صحيح');
+        });
+        return;
+      }
       if (pin.length === 4) {
         const u = D.STAFF.find((s) => s.pin === pin && D.can(s, perm) === 1);
         if (u) { D.pinOk('approve'); setTimeout(() => { resolve(u); m.close('ok'); }, 140); }

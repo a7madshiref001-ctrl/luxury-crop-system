@@ -7,6 +7,8 @@
   const $$ = (s, r) => [...(r || document).querySelectorAll(s)];
   const I = D.icon, esc = D.esc, money = D.money, fmt = D.fmt;
   const S = () => D.state();
+  // جهاز مربوط بالكاشير (جوال المدير): نفس الكاشير بالظبط، بس البيانات والتنفيذ عند كاشير المحل (link.js)
+  if (D.REAL && D.pairedRemote && D.pairedRemote()) { D.SAT = true; D.REMOTE = true; }
 
   /* ---------- session ---------- */
   let me = null;
@@ -136,6 +138,8 @@
 
   /* ---------- lock / PIN ---------- */
   function lockScreen(after) {
+    // من الجوال: الدخول بيتراجع عند كاشير المحل (DARJ_GATE)، فالخروج = رجوع لشاشة الدخول
+    if (D.REMOTE) { me = null; if (window.DARJ_GATE) window.DARJ_GATE.out('الكاشير من الجوال'); setTimeout(() => location.reload(), 150); return; }
     if (D.REAL && !S().setup) { setupWizard(); return; }
     const users = D.REAL ? D.STAFF.filter((u) => !u.off) : D.STAFF;
     let pick = D.REAL ? (users.find((u) => u.role === 'cashier') || users[0] || {}).id : 'u3', pin = '';
@@ -2446,6 +2450,7 @@
 
   /* ---------- boot ---------- */
   function boot() {
+    if (D.REMOTE) { try { me = sessionStorage.getItem('darj:me'); } catch (e) { /* */ } }
     D.startLive();
     D.state().orders.forEach((o) => { if (o.status === 'new') seenNew.add(o.id); });
     // الصلاحيات لازم تتراجع حتى لو الصفحة اتفتحت على لينك مباشر
@@ -2471,5 +2476,6 @@
     window.addEventListener('hashchange', () => { const h = location.hash.slice(1).split('/'); const r = h[0]; const sub = r === 'settings' && h[1] && h[1] !== setTab; if (sub) setTab = h[1]; if ((r !== route || sub) && VIEWS[r]) { const rr = ROUTES.find((x) => x.id === r); if (can(rr.perm)) { route = r; render(); } } });
   }
   window.DARJ_APP = { go };
-  boot();
+  if (D.REMOTE) window.DARJ_REMOTE_BOOT = boot; // بيبدأ بعد الدخول ووصول نسخة المحل (link.js)
+  else boot();
 })();

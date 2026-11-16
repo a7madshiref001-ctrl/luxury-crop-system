@@ -235,6 +235,7 @@
     pump();
   }
   async function start(email) {
+    if (D.REMOTE) return; // الكاشير من الجوال: الحفظ على السيرفر من جهاز المحل بس
     if (started) return; started = true;
     const c = await init();
     // تاب واحد بس على الجهاز هو اللي بيسحب الطلبات ويحفظ
@@ -325,7 +326,7 @@
     panel(el, me) { box = el; boxMe = me; if (!el.dataset.cx) { el.dataset.cx = '1'; el.addEventListener('click', onBox); } paint(); },
     status: () => Object.assign({}, cloud),
     // صفحة Website دخلت بحساب الإدارة على اتصال الكاشير: الحفظ على السيرفر يبدأ بنفس الدخول
-    begin: (email) => { if (!D.REAL || cloud.on) return; hideNag(); if (D.state().setup) { D.mutate(() => D.log(boxMe, 'sync', 'تشغيل الربط مع السيرفر'), 'sync'); start(email); } },
+    begin: (email) => { if (!D.REAL || D.REMOTE || cloud.on) return; hideNag(); if (D.state().setup) { D.mutate(() => D.log(boxMe, 'sync', 'تشغيل الربط مع السيرفر'), 'sync'); start(email); } },
     signIn: () => signIn(),
     // لصفحة إدارة الموقع: نفس اتصال الكاشير، ومعرفة هل الحساب الحالي حساب إدارة
     client: init,
@@ -440,7 +441,7 @@
   }
 
   // لو فيه جلسة محفوظة، الربط بيرجع لوحده. وجهاز من غير بيانات بيعرض تحميل نسخة السيرفر
-  if (C.enabled && D.REAL) {
+  if (C.enabled && D.REAL && !D.REMOTE) {
     const fresh = () => !D.state().setup;
     init().then(async (c) => {
       const s = await c.auth.getSession();

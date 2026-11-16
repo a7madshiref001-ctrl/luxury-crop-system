@@ -11,7 +11,7 @@
   const ST = { new: 'بانتظار الدفع', prep: 'قيد التحضير', ready: 'جاهز', done: 'تم التسليم', rejected: 'ملغي', cancelled: 'ملغي' };
   const STN = { bar: 'الباريستا', kitchen: 'المطبخ' };
   const open = {}; let all = false;
-  const head = (stat) => `<div class="ph__h"><img src="assets/brand/logo-mark.png" alt=""><div><b>محصول فاخر</b><small>متابعة المدير</small></div><span class="ph__sp"></span>${stat}</div>`;
+  const head = (stat) => `<div class="ph__h"><img src="assets/brand/logo-mark.png" alt=""><div><b>محصول فاخر</b><small>متابعة المدير</small></div><span class="ph__sp"></span>${stat}</div>${D.SAT ? '<a class="btn btn--ink btn--block" href="app.html"><span class="bi"><b>Open cashier</b><small>الكاشير الكامل — تحكّم في كل حاجة من الجوال</small></span></a>' : ''}`;
   const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'الآن' : m < 60 ? 'من ' + m + ' دقيقة' : 'من ' + Math.round(m / 60) + ' ساعة'; };
 
   function cached() { try { return JSON.parse(localStorage.getItem((D.CFG.key || 'darj:v1') + ':stats') || 'null'); } catch (e) { return null; } }
