@@ -13,6 +13,8 @@ window.DARJ_CONFIG = {
   brand: { mark: 'assets/brand/logo-mark.png', word: 'LUXURY CROP', sub: 'Cashier' },
   phone: true, // جوال المدير: صفحة phone.html بتتربط بـQR من Settings ← Devices زي باقي الشاشات
   loyalNeed: 6,
+  dayResetH: 4, // يوم الشغل من 6 الصبح لحد 4 الفجر: كشف اليوم بيتصفّر ويتأرشف الساعة 4 الفجر
+  shopOpenH: 6,
   welcome: 'أهلًا بك في محصول فاخر — كل 6 طلبات، مشروب ساخن على حسابنا.',
   thanks: 'شكرًا لزيارتكم — محصول فاخر',
   poweredBy: false,
@@ -24,7 +26,7 @@ window.DARJ_CONFIG = {
   tour: { drink: '170284', drink2: '170283', food: '170309', food2: '193000', dessert: '170313', mod: 'addon_hot_1', drinkName: 'سبانش لاتيه', foodName: 'كوكيز فانيليا', modName: 'الحليب النباتي' },
   connect: {
     enabled: true,
-    version: '22',
+    version: '24',
     url: 'https://qckjfyupxwctfizqdbxe.supabase.co',
     key: 'sb_publishable_zN4rosy4qTS9Nbyx1iFxYw_Azx-lYnc', // مفتاح عام (نفس اللي في الموقع) — الحماية في RLS
     pollMs: 5000,

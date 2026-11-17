@@ -582,6 +582,19 @@ kbd{display:inline-flex;align-items:center;height:18px;padding:0 5px;border-radi
 .drawer-pop svg{width:34px;height:24px}
 
 /* ---------- responsive shell ---------- */
+/* من الجوال: مين على كاشير المحل الآن */
+.hubwho{display:flex;align-items:center;gap:8px;height:38px;padding:0 12px;border-radius:12px;background:var(--go-50);color:var(--ink);border:1px solid transparent;min-width:0;max-width:260px;cursor:pointer;text-align:start;font:inherit}
+.hubwho .dot{background:var(--go);flex:none}
+.hubwho svg{flex:none}
+.hubwho__t{display:grid;min-width:0;line-height:1.15}
+.hubwho__t b{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hubwho__t small{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hubwho.idle{background:var(--paper);border-color:var(--line)}
+.hubwho.off{background:var(--red-50);color:var(--red)}
+@media (max-width:640px){
+  .hubwho{max-width:150px;padding:0 9px;height:36px}
+  .hubwho__t small{font-size:9.5px}
+}
 @media (max-width:1100px){
   .g4{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
@@ -935,3 +948,8 @@ kbd{display:inline-flex;align-items:center;height:18px;padding:0 5px;border-radi
 #gate .lock__side .btn{display:inline-flex}
 .gate__links{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
 .gate__links small{flex:1 0 100%;color:var(--muted);font-size:12px}
+
+/* عناوين كشف الوردية وكشف اليوم في صفحة الوردية */
+.shh{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:22px 0 10px;font-size:15px}
+.shh .label{margin:0}
+.shh small{color:var(--muted);font-weight:500;font-size:12.5px}

@@ -11,9 +11,10 @@
     if (!B || !B.configured()) throw new Error("not configured");
     return B.init();
   }
-  // يوم العمل بتوقيت السعودية، وبيبدأ 6 الصبح (نفس حساب الكاشير)
+  // يوم العمل بتوقيت السعودية: بيتصفّر الساعة 4 الفجر (نفس حساب الكاشير — dayResetH في إعداداته)
+  var RESET_H = 4;
   function dayKey(ts) {
-    var d = new Date((ts == null ? Date.now() : ts) + 3 * 3600000 - 6 * 3600000);
+    var d = new Date((ts == null ? Date.now() : ts) + 3 * 3600000 - RESET_H * 3600000);
     var p = function (n) { return n < 10 ? "0" + n : "" + n; };
     return d.getUTCFullYear() + "-" + p(d.getUTCMonth() + 1) + "-" + p(d.getUTCDate());
   }
@@ -67,6 +68,14 @@
     return r2(cash);
   }
 
+  // كشف الوردية: فواتير الوردية دي بس (حتى لو بدأت قبل تصفير اليوم)
+  function shiftReport(sh, orders, payouts, who) {
+    var s = summarize(orders);
+    var pay = (payouts || []).filter(function (p) { return p && p.shift === sh.id; }).reduce(function (a, p) { return a + (Number(p.a) || 0); }, 0);
+    return { id: sh.id, by: who(sh.user), open: sh.open, close: sh.close || 0, z: sh.z || "", float: Number(sh.float) || 0, count: s.count, net: s.net, refunds: s.refunds, pays: s.by, payouts: r2(pay),
+      expected: sh.close ? Number(sh.expected) || 0 : expectedCash(sh, orders, payouts), counted: sh.close ? Number(sh.counted) || 0 : null, variance: sh.close ? Number(sh.variance) || 0 : null, closedBy: sh.closedBy ? who(sh.closedBy) : "" };
+  }
+
   /* آخر نسخة من حالة الكاشير (من غير قائمة الطلبات الكاملة — دي بتيجي من pos_sales) */
   async function head() {
     var c = client();
@@ -105,6 +114,12 @@
     var shifts = (h && Array.isArray(h.shifts)) ? h.shifts : [];
     var staff = (h && Array.isArray(h.staff)) ? h.staff : [];
     var open = shifts.filter(function (s) { return s && !s.close; })[0] || null;
+    var last = shifts.filter(function (s) { return s && s.close; }).sort(function (a, b) { return b.close - a.close; })[0] || null;
+    var rep = open || last, shOrders = [];
+    if (rep) {
+      shOrders = orders.filter(function (o) { return o && o.shift === rep.id; });
+      if (dayKey(rep.open) !== day) { try { shOrders = shOrders.concat((await salesOf(dayKey(rep.open))).filter(function (o) { return o && o.shift === rep.id; })); } catch (e) { /* الكشف يطلع من فواتير النهارده بس */ } }
+    }
     var who = function (id) { var u = staff.filter(function (x) { return x.id === id; })[0]; return u ? u.name : ""; };
     return {
       hasCopy: !!h, day: day, today: day === dayKey(), savedAt: h ? new Date(h.updated_at).getTime() : 0,
@@ -112,8 +127,9 @@
       store: (h && h.store) || {}, settings: (h && h.settings) || {}, staffCount: staff.filter(function (u) { return !u.off; }).length,
       soldOut: h && h.avail ? Object.keys(h.avail).filter(function (k) { return h.avail[k] === false; }) : [],
       lastInvoice: h && h.seq ? h.seq.inv || 0 : 0,
-      shift: open ? { id: open.id, by: who(open.user), openedAt: open.open, float: Number(open.float) || 0, expected: expectedCash(open, orders, h.payouts) } : null,
-      lastClosed: shifts.filter(function (s) { return s && s.close; }).sort(function (a, b) { return b.close - a.close; })[0] || null,
+      shift: open ? { id: open.id, by: who(open.user), openedAt: open.open, float: Number(open.float) || 0, expected: expectedCash(open, shOrders, h.payouts) } : null,
+      lastClosed: last,
+      shiftRep: rep ? shiftReport(rep, shOrders, h.payouts, who) : null,
       sum: summarize(orders), orders: orders, days: res[1],
       staffNames: staff.reduce(function (m, u) { if (u && u.id) m[u.id] = u.name || ""; return m; }, {})
     };

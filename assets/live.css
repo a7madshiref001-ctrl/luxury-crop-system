@@ -89,3 +89,9 @@ body{background:var(--bg);color:var(--txt);font-family:'IBM Plex Sans Arabic',sy
 .lv-il b{flex:none;font-family:system-ui,sans-serif;font-weight:600;direction:ltr}
 .lv-il--meta{font-size:11.5px;color:var(--txt-3);padding-top:6px;border-top:1px dashed var(--line)}
 .lv-more{margin-top:8px}
+
+/* كشف الوردية */
+.lv-hero--sh{background:var(--card);color:var(--txt);border:1.5px solid var(--mint);box-shadow:none}
+.lv-hero--sh .lv-hero__l,.lv-hero--sh .lv-hero__d{opacity:1;color:var(--txt-3)}
+#lvShift{margin-top:8px}
+.lv-row.bad .v{color:#b3261e}

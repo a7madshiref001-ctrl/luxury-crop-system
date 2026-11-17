@@ -20,7 +20,8 @@
     if (m < 24 * 60) return "من " + Math.round(m / 60) + " ساعة";
     return new Date(t).toLocaleString("ar-SA-u-ca-gregory-nu-latn", { dateStyle: "medium", timeStyle: "short" });
   }
-  function clock(t) { return t ? new Date(t).toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" }) : "—"; }
+  function clock(t) { return t ? new Date(t).toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" }) : "—"; }
+  function dateAr(t) { return t ? new Date(t).toLocaleDateString("ar-SA-u-nu-latn-ca-gregory", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Riyadh" }) : ""; }
   function row(name, sub, value, extra) {
     return '<div class="lv-row"><div class="n"><b>' + esc(name) + "</b>" + (sub ? "<span>" + esc(sub) + "</span>" : "") + "</div>" + (extra || "") + (value == null ? "" : '<div class="v">' + value + "</div>") + "</div>";
   }
@@ -84,9 +85,31 @@
       return '<div class="' + (x.day === o.day ? "on" : "") + '" title="' + esc(x.day + " · " + money(x.net)) + '"><i style="height:' + Math.max(3, Math.round(100 * x.net / max)) + '%"></i><span>' + esc(x.day.slice(8)) + "</span></div>";
     }).join("");
 
+    // كشف الوردية: المفتوحة، ولو مفيش فآخر وردية اتقفلت
+    var R = o.shiftRep;
+    if (!R) {
+      $("lvShiftSub").textContent = "كشف الوردية · لا توجد وردية النهارده";
+      $("lvShiftNet").textContent = "0"; $("lvShiftD").textContent = "تظهر هنا أول ما الكاشير يفتح وردية."; $("lvShift").innerHTML = "";
+    } else {
+      $("lvShiftSub").textContent = "كشف الوردية · " + (R.close ? "اتقفلت" + (R.z ? " " + R.z : "") : "مفتوحة الآن");
+      $("lvShiftNet").textContent = money(R.net);
+      $("lvShiftD").textContent = (R.by || "—") + " · من " + dateAr(R.open) + " " + clock(R.open) + (R.close ? " لحد " + clock(R.close) : "");
+      var sr = [row("فواتير الوردية", "", String(R.count))];
+      if (R.refunds) sr.push(row("مرتجعات", "", money(R.refunds)));
+      Object.keys(R.pays || {}).sort(function (a, b) { return R.pays[b] - R.pays[a]; }).forEach(function (k) { if (R.pays[k]) sr.push(row(P.PAY[k] || k, "", money(R.pays[k]))); });
+      if (R.payouts) sr.push(row("مصروفات من الدرج", "", money(R.payouts)));
+      sr.push(row("العهدة الافتتاحية", "", money(R.float)));
+      sr.push(row(R.close ? "كان المتوقع في الدرج" : "النقد المتوقع في الدرج", R.close ? "" : "العهدة + الكاش − المرتجعات والمصروفات", money(R.expected)));
+      if (R.close) {
+        sr.push(row("المعدود فعلًا", R.closedBy ? "قفلها " + R.closedBy : "", money(R.counted)));
+        sr.push(row(R.variance < 0 ? "عجز" : R.variance > 0 ? "زيادة" : "مطابق", "", money(Math.abs(R.variance || 0))).replace('class="lv-row"', R.variance ? 'class="lv-row bad"' : 'class="lv-row"'));
+      }
+      $("lvShift").innerHTML = sr.join("");
+    }
+
     var now = [];
     if (o.shift) {
-      now.push(row("الوردية مفتوحة", (o.shift.by || "") + " · من " + clock(o.shift.openedAt), null, '<span class="lv-pill ready">مفتوحة</span>'));
+      now.push(row("الوردية مفتوحة", (o.shift.by || "") + " · من " + dateAr(o.shift.openedAt) + " " + clock(o.shift.openedAt), null, '<span class="lv-pill ready">مفتوحة</span>'));
       now.push(row("النقد المتوقع في الدرج", "افتتاحي " + money(o.shift.float) + " ر.س", money(o.shift.expected)));
     } else {
       now.push(row("الوردية", o.lastClosed ? "آخر إقفال " + ago(o.lastClosed.close) : "لا توجد وردية مفتوحة", null, '<span class="lv-pill">مقفولة</span>'));

@@ -333,7 +333,11 @@
   const OFF = 180 * 60000;
   D.ksa = (ts) => { const d = new Date((ts ?? Date.now()) + OFF); return { y: d.getUTCFullYear(), mo: d.getUTCMonth(), d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes(), s: d.getUTCSeconds(), wd: d.getUTCDay() }; };
   D.ksaTs = (y, mo, d, h, mi) => Date.UTC(y, mo, d, h, mi || 0) - OFF;
-  D.OPEN_H = 6;
+  // يوم الشغل بيتصفّر الساعة dayResetH (الافتراضي 6 الصبح). shopOpenH ساعة فتح المحل للعرض بس.
+  D.OPEN_H = CFG.dayResetH != null ? CFG.dayResetH : 6;
+  D.SHOP_H = CFG.shopOpenH != null ? CFG.shopOpenH : D.OPEN_H;
+  D.hourAr = (h) => (h === 0 ? '12 منتصف الليل' : h < 5 ? h + ' الفجر' : h < 12 ? h + ' ص' : h === 12 ? '12 م' : (h - 12) + ' م');
+  D.dayHours = () => 'من ' + D.hourAr(D.SHOP_H) + ' لحد ' + D.hourAr(D.OPEN_H) + ' · بيتصفّر ' + D.hourAr(D.OPEN_H);
   D.bizStart = (now) => { const k = D.ksa(now); let t = D.ksaTs(k.y, k.mo, k.d, D.OPEN_H); if (k.h < D.OPEN_H) t -= 864e5; return t; };
   D.dayKey = (ts) => { const k = D.ksa(D.bizStart(ts)); return `${k.y}-${pad(k.mo + 1)}-${pad(k.d)}`; };
   D.at = (h, mi, now) => { // ساعة معيّنة في يوم الشغل الحالي (بعد نص الليل = اليوم اللي بعده)
@@ -576,6 +580,14 @@
     const total = os.reduce((a, o) => a + o.total, 0);
     const payouts = S.payouts.filter((p) => p.shift === sh.id).reduce((a, p) => a + p.a, 0);
     return { count: os.length, total: D.r2(total), vat: D.r2(os.reduce((a, o) => a + o.vat, 0)), by, refunds: D.r2(refunds), disc: D.r2(disc), payouts: D.r2(payouts), expected: expectedCash(S, sh) };
+  };
+  // كشف اليوم: كل فواتير يوم الشغل الحالي (من التصفير للتصفير) — من غير الملغي والتجريبي واللي لسه ما اتدفعش
+  D.dayStats = (S) => {
+    const os = D.today(S).filter((o) => !o.sim && o.status !== 'rejected' && !o.unpaid);
+    const by = {}; let refunds = 0, total = 0, vat = 0, cashBack = 0;
+    os.forEach((o) => { total += o.total || 0; vat += o.vat || 0; refunds += o.refunded || 0; (o.pays || []).forEach((p) => { by[p.m] = D.r2((by[p.m] || 0) + (p.a || 0)); }); (o.refunds || []).forEach((r) => { cashBack += D.refundCash(r); }); });
+    const net = D.r2(total - refunds);
+    return { count: os.length, total: D.r2(total), vat: D.r2(vat), refunds: D.r2(refunds), net, avg: os.length ? D.r2(net / os.length) : 0, by, cashNet: D.r2((by.cash || 0) - cashBack), from: D.bizStart(Date.now()) };
   };
   D.openShift = (S, reg) => S.shifts.find((s) => s.reg === (reg || 1) && !s.close);
 

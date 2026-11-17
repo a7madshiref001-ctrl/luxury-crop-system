@@ -55,6 +55,7 @@
         <div class="top__sp"></div>
         <div class="top__right">
           ${D.REAL ? '' : `<button class="guide-btn" id="guide" title="جولة تفاعلية">${I('play')}<span>Guide · جولة</span></button>`}
+          ${D.REMOTE ? '<button class="hubwho" id="hubWho" title="مين على كاشير المحل الآن"></button>' : ''}
           <button class="net" id="net" title="حالة الاتصال"></button>
           <button class="icon-btn" id="bell" aria-label="النشاط">${I('bell')}<span class="badge" id="bellN" hidden></span></button>
           <button class="me" id="me"></button>
@@ -64,6 +65,7 @@
       <main class="main" id="main"></main>
     </div>`;
     $('#net').addEventListener('click', toggleNet);
+    if ($('#hubWho')) $('#hubWho').addEventListener('click', hubWhoModal);
     if ($('#guide')) $('#guide').addEventListener('click', openGuide);
     $('#bell').addEventListener('click', openFeed);
     $('#me').addEventListener('click', openMe);
@@ -94,7 +96,38 @@
     const unread = s.feed.filter((f) => f.ts > feedSeen).length;
     $('#bellN').hidden = !unread; $('#bellN').textContent = unread;
     $('#me').innerHTML = `${D.av(user)}<span class="me__txt"><b>${esc(user.short)}</b><small>${D.ROLES[user.role].ar}</small></span>`;
+    drawHubWho();
     drawInbox();
+  }
+  /* من الجوال: مين مسجّل دخول على كاشير المحل دلوقتي (بيوصل مع كل نبضة من الكاشير) */
+  function hubWhoInfo() {
+    const L = window.DARJ_LINK || {};
+    const on = L.hubOnline ? L.hubOnline() : false;
+    const w = L.hub || null;
+    const role = w && w.role && D.ROLES[w.role] ? D.ROLES[w.role].ar : '';
+    return { on, w, role };
+  }
+  function drawHubWho() {
+    const el = $('#hubWho'); if (!el) return;
+    const { on, w, role } = hubWhoInfo();
+    el.className = 'hubwho' + (!on ? ' off' : w && w.u ? '' : ' idle');
+    el.innerHTML = !on ? `${I('wifioff', 'sm')}<span class="hubwho__t"><b>Shop offline</b><small>كاشير المحل غير متصل</small></span>`
+      : w && w.u ? `<i class="dot pulse"></i><span class="hubwho__t"><b>${esc(w.name)}</b><small>On the cashier · ${esc(role)} من ${D.time(w.since)}</small></span>`
+      : `${I('lock', 'sm')}<span class="hubwho__t"><b>Cashier locked</b><small>${w ? 'لا أحد مسجّل على كاشير المحل' : 'بانتظار كاشير المحل'}</small></span>`;
+  }
+  function hubWhoModal() {
+    const { on, w, role } = hubWhoInfo();
+    const sh = w && w.shift;
+    const row = (k, v) => `<div class="set-row"><span><b>${k}</b></span><span>${v}</span></div>`;
+    D.modal(`${D.head(bi('Shop cashier now', 'كاشير المحل الآن'), on ? 'متصل الآن — البيانات اللي هنا هي نفس بيانات جهاز المحل' : 'غير متصل — افتح الكاشير على جهاز المحل وتأكد من الإنترنت')}
+      <div class="modal__b">
+        ${row('على الكاشير الآن', w && w.u ? `<b>${esc(w.name)}</b> · ${esc(role)}` : 'لا أحد — الكاشير مقفول')}
+        ${w && w.u ? row('مسجّل من', `${esc(D.dateAr(w.since))} · ${D.time(w.since)}`) : ''}
+        ${row('الوردية', sh ? `مفتوحة من ${esc(D.dateAr(sh.open))} · ${D.time(sh.open)}${sh.by ? ' — فتحها ' + esc(sh.by) : ''}` : 'لا توجد وردية مفتوحة')}
+        ${row('الجهاز', `كاشير ${(w && w.reg) || 1}`)}
+        ${row('أنت هنا باسم', esc(D.staff(me).name))}
+      </div>
+      <div class="modal__f"><button class="btn btn--ghost" data-close>تمام</button></div>`, { cls: 'modal--sm' });
   }
   // الطلبات المستنية موافقة الكاشير (الموقع) أو تحصيل (الكشك): كارت ثابت في أي صفحة
   let inboxMin = false;
@@ -902,8 +935,18 @@
   /* =====================================================================
      ORDERS
      ===================================================================== */
-  let otab = 'online', oq = '';
+  let otab = 'online', oq = '', oday = '';
   const shownCards = new Set();
+  // الأيام اللي فواتيرها لسه على الجهاز: النهارده أول حاجة، وبعده الأحدث
+  function invDays(s) {
+    const set = new Set([s.day]);
+    s.orders.forEach((o) => { if (o.day && (o.inv || o.status !== 'new')) set.add(o.day); });
+    return [...set].sort().reverse();
+  }
+  const dayTs = (d) => { const p = String(d).split('-').map(Number); return D.ksaTs ? D.ksaTs(p[0], p[1] - 1, p[2], 12, 0) : Date.parse(d + 'T12:00:00+03:00'); };
+  const dayDiff = (s, d) => Math.round((dayTs(s.day) - dayTs(d)) / 864e5);
+  const dayEn = (s, d) => { const n = dayDiff(s, d); return n === 0 ? 'Today' : n === 1 ? 'Yesterday' : d.slice(5).replace('-', '/'); };
+  const dayAr = (s, d) => { const n = dayDiff(s, d); return n === 0 ? 'اليوم' : n === 1 ? 'أمس' : D.dateArS(dayTs(d)); };
   function renderOrders(view) {
     view.className = 'view';
     const s = S();
@@ -925,11 +968,18 @@
     } else if (otab === 'active') {
       ob.innerHTML = `<div class="ord-list">${active.map((o) => ocard(o)).join('') || `<div class="card empty">${I('cup')}<span>لا توجد طلبات قيد التحضير الآن</span></div>`}</div>`;
     } else {
+      // فواتير اليوم، والأيام اللي لسه على الجهاز (آخر يومين بيفضلوا عشان المرتجعات) — عشان قبل أول فاتورة اليوم ماتبانش فاضية
       const k = oq.trim();
-      const list = D.today(s).filter((o) => !k || (o.inv || '').includes(k) || String(o.no) === k.replace('#', '') || (o.name || '').includes(k) || (o.cust && (s.customers.find((c) => c.id === o.cust) || {}).phone?.includes(k))).slice().reverse();
-      ob.innerHTML = `<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap"><label class="search" style="flex:1;min-width:220px"><span>${I('search')}</span><input class="input" id="oq" placeholder="رقم الفاتورة INV-… أو رقم الطلب أو اسم العميل" value="${esc(oq)}"></label></div>
+      const days = invDays(s);
+      if (!days.includes(oday)) oday = s.day;
+      const base = k ? s.orders.filter((o) => days.includes(o.day || s.day)) : oday === s.day ? D.today(s) : s.orders.filter((o) => o.day === oday);
+      const list = base.filter((o) => (o.inv || o.status !== 'new') && (!k || (o.inv || '').includes(k) || String(o.no) === k.replace('#', '') || (o.name || '').includes(k) || (o.cust && (s.customers.find((c) => c.id === o.cust) || {}).phone?.includes(k)))).sort((a, b) => b.ts - a.ts);
+      const chips = days.length > 1 ? `<div class="seg" id="od">${days.map((d) => `<button data-d="${d}" class="${!k && oday === d ? 'on' : ''}">${bi(dayEn(s, d), dayAr(s, d) + ' · ' + s.orders.filter((o) => (o.day || s.day) === d && (o.inv || o.status !== 'new')).length)}</button>`).join('')}</div>` : '';
+      ob.innerHTML = `<div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">${chips}<label class="search" style="flex:1;min-width:220px"><span>${I('search')}</span><input class="input" id="oq" placeholder="رقم الفاتورة INV-… أو رقم الطلب أو اسم العميل" value="${esc(oq)}"></label></div>
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th>الوقت</th><th>الطلب</th><th>الفاتورة</th><th>المصدر</th><th>الأصناف</th><th>الدفع</th><th>الكاشير</th><th class="r">الإجمالي</th><th>الحالة</th></tr></thead>
-        <tbody>${list.slice(0, 120).map((o) => `<tr class="click" data-o="${o.id}"><td class="nw en">${D.time(o.ts)}</td><td class="en"><b>#${o.no}</b></td><td class="mono nw" style="font-size:12px">${o.inv || '—'}</td><td class="nw">${D.CH[o.ch].ar}${o.table ? ' ' + o.table : ''}</td><td>${o.lines.reduce((a, l) => a + l.qty, 0)}</td><td class="nw">${o.pays.map((p) => `<span class="pill">${D.PAY[p.m].ar}</span>`).join(' ')}</td><td class="nw">${esc(D.who(o).short)}${o.ch === 'kiosk' && !o.staff ? '' : ' · ' + o.reg}</td><td class="r nw">${money(o.total)}</td><td class="nw">${statusPill(o)}</td></tr>`).join('')}</tbody></table></div>`;
+        <tbody>${list.slice(0, 200).map((o) => `<tr class="click" data-o="${o.id}"><td class="nw en">${(o.day || s.day) !== s.day ? esc(D.dateArS(o.ts)) + ' · ' : ''}${D.time(o.ts)}</td><td class="en"><b>#${o.no}</b></td><td class="mono nw" style="font-size:12px">${o.inv || '—'}</td><td class="nw">${D.CH[o.ch] ? D.CH[o.ch].ar : o.ch}${o.table ? ' ' + o.table : ''}</td><td>${o.lines.reduce((a, l) => a + l.qty, 0)}</td><td class="nw">${(o.pays || []).map((p) => `<span class="pill">${D.PAY[p.m] ? D.PAY[p.m].ar : p.m}</span>`).join(' ')}</td><td class="nw">${esc(D.who(o).short)}${o.ch === 'kiosk' && !o.staff ? '' : ' · ' + o.reg}</td><td class="r nw">${money(o.total)}</td><td class="nw">${statusPill(o)}</td></tr>`).join('') || `<tr><td colspan="9" class="empty" style="padding:22px">${k ? 'لا توجد فاتورة بهذا الرقم أو الاسم' : oday === s.day ? 'لا توجد فواتير اليوم حتى الآن' + (days.length > 1 ? ' — فواتير الأيام السابقة في الأزرار فوق' : '') : 'لا توجد فواتير في هذا اليوم'}</td></tr>`}</tbody></table></div>`;
+      const od = $('#od', ob);
+      if (od) od.addEventListener('click', (e) => { const b = e.target.closest('[data-d]'); if (!b) return; oday = b.dataset.d; oq = ''; renderOrders(view); });
       const oi = $('#oq', ob);
       oi.addEventListener('input', () => { oq = oi.value; const pos = oi.selectionStart; renderOrders(view); const n = $('#oq', view); n.focus(); n.setSelectionRange(pos, pos); });
     }
@@ -1175,10 +1225,24 @@
     const reg2 = D.openShift(s, 2);
     const st2 = reg2 ? D.shiftStats(s, reg2) : null;
     const hist = s.shifts.slice().reverse();
+    // كشف اليوم كله جنب كشف الوردية — للمدير والمشرف بس (الكاشير قفله أعمى فمايشوفش الكاش)
+    const ds = (can('reports') === 1 || seeExp) ? D.dayStats(s) : null;
+    const dayKeys = ds ? ['cash', 'mada', 'apple', 'stc', 'online', 'credit'].filter((k) => ds.by[k] || ['cash', 'mada'].includes(k)).concat(Object.keys(ds.by).filter((k) => !['cash', 'mada', 'apple', 'stc', 'online', 'credit'].includes(k))) : [];
+    const dayCard = !ds ? '' : `<h3 class="shh"><span class="label">Day report</span>كشف اليوم<small>${esc(D.dateAr(ds.from))} · ${esc(D.dayHours())}</small></h3>
+      <div class="grid g4 kpi-row">
+        <div class="kpi"><span class="label">Net sales</span><b>${fmt(ds.net)}</b><small>ر.س صافي اليوم كله${ds.refunds ? ' بعد المرتجعات' : ''}</small></div>
+        <div class="kpi"><span class="label">Invoices</span><b>${ds.count}</b><small>فاتورة من أول اليوم</small></div>
+        <div class="kpi"><span class="label">Average</span><b>${fmt(ds.avg)}</b><small>متوسط الفاتورة</small></div>
+        <div class="kpi"><span class="label">Refunds</span><b>${fmt(ds.refunds)}</b><small>ر.س مرتجعات اليوم</small></div>
+      </div>
+      <div class="card" style="margin-top:14px"><div class="card__h"><h3><span class="label">By tender · today</span>مبيعات اليوم حسب طريقة الدفع</h3><span class="pill">${fmt(ds.total)} ر.س</span></div>
+        <div class="mix">${dayKeys.map((k) => { const v = ds.by[k] || 0; return `<div class="mix__row"><span>${esc((D.PAY && D.PAY[k] ? D.PAY[k].ar : k))}</span><span class="bar"><i style="width:${(v / (ds.total || 1) * 100).toFixed(1)}%"></i></span><span class="num">${fmt(v)}</span></div>`; }).join('')}</div>
+        <p class="muted" style="font-size:12px;margin-top:12px">كل الورديات من أول اليوم. اليوم بيتقفل ويتصفّر تلقائيًا الساعة ${esc(D.hourAr(D.OPEN_H))}.</p></div>`;
     view.innerHTML = `<div class="vh"><div><span class="label">Shift · Cashier 1</span><h1>The drawer</h1><p>العهدة والمصروفات وإقفال الوردية بالقفل الأعمى: الكاشير يعدّ الدرج دون أن يعرف المبلغ المتوقع.</p></div>
       <div class="vh__act">${sh ? `<button class="btn btn--ghost" id="x">${I('print', 'sm')}${bi('X report', 'تقرير منتصف الوردية')}</button><button class="btn btn--ghost" id="po">${I('cash', 'sm')}${bi('Paid-out', 'مصروف من الدرج')}</button><button class="btn btn--ink" id="close">${I('lock', 'sm')}${bi('Close shift', 'إقفال الوردية')}</button>` : `<button class="btn btn--go" id="open">${I('drawer', 'sm')}${bi('Open shift', 'فتح وردية جديدة')}</button>`}</div></div>
+      ${ds ? '<h3 class="shh"><span class="label">Shift report</span>كشف الوردية<small>من فتح الوردية لحد دلوقتي</small></h3>' : ''}
       ${sh ? `<div class="grid g4 kpi-row">
-        <div class="kpi"><span class="label">Opened</span><b>${D.time(sh.open)}</b><small>${esc(D.staff(sh.user).name)} · عهدة ${fmt(sh.float)} ر.س</small></div>
+        <div class="kpi"><span class="label">Opened</span><b>${D.time(sh.open)}</b><small><b style="display:block;font-size:12.5px;color:var(--ink-2)">${esc(D.dateAr(sh.open))}</b>${esc(D.staff(sh.user).name)} · عهدة ${fmt(sh.float)} ر.س</small></div>
         <div class="kpi"><span class="label">Invoices</span><b>${st.count}</b><small>فاتورة في هذه الوردية</small></div>
         <div class="kpi"><span class="label">Sales</span><b>${fmt(st.total)}</b><small>ر.س${st.vat ? ` · منها ضريبة ${fmt(st.vat)}` : ''}</small></div>
         <div class="kpi"><span class="label">Expected cash</span><b>${seeExp ? fmt(st.expected) : '••••'}</b><small>${seeExp ? 'العهدة + الكاش − المصروفات' : 'مخفي — قفل أعمى (يظهر للمدير فقط)'}</small></div>
@@ -1190,10 +1254,11 @@
         <div class="card"><div class="card__h"><h3><span class="label">Paid-outs</span>مصروفات من الدرج</h3><span class="pill">${fmt(st.payouts)} ر.س</span></div>
           ${s.payouts.filter((p) => p.shift === sh.id).map((p) => `<div class="set-row"><span><b>${esc(p.why)}</b><small>${p.id} · ${D.time(p.ts)} · ${esc(D.staff(p.user).short)}${p.appr ? ' · وافق ' + esc(D.staff(p.appr).short) : ''}</small></span>${money(p.a)}</div>`).join('') || '<div class="empty" style="padding:20px">لا توجد مصروفات في هذه الوردية</div>'}</div>
       </div>` : `<div class="card empty">${I('drawer')}<b style="color:var(--ink-2)">الكاشير 1 مقفول</b><span>افتح وردية جديدة بعهدة البداية لتبدأ البيع.</span></div>`}
-      ${reg2 ? `<div class="card" style="margin-top:14px"><div class="card__h"><h3><span class="label">Cashier 2 · live</span>${esc(D.staff(reg2.user).name)} — كاشير 2</h3><span class="pill pill--go"><i class="dot pulse"></i> يعمل الآن</span></div><div class="grid g3"><div><span class="muted">من</span><div class="num" style="font-size:18px">${D.time(reg2.open)}</div></div><div><span class="muted">الفواتير</span><div class="num" style="font-size:18px">${st2.count}</div></div><div><span class="muted">المبيعات</span><div style="font-size:18px">${money(st2.total)}</div></div></div></div>` : ''}
+      ${reg2 ? `<div class="card" style="margin-top:14px"><div class="card__h"><h3><span class="label">Cashier 2 · live</span>${esc(D.staff(reg2.user).name)} — كاشير 2</h3><span class="pill pill--go"><i class="dot pulse"></i> يعمل الآن</span></div><div class="grid g3"><div><span class="muted">من</span><div class="num" style="font-size:18px">${D.time(reg2.open)}</div><small class="muted">${esc(D.dateArS(reg2.open))}</small></div><div><span class="muted">الفواتير</span><div class="num" style="font-size:18px">${st2.count}</div></div><div><span class="muted">المبيعات</span><div style="font-size:18px">${money(st2.total)}</div></div></div></div>` : ''}
+      ${dayCard}
       <h3 style="margin:24px 0 10px;font-size:15px">سجل ورديات اليوم</h3>
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th>الوردية</th><th>الكاشير</th><th>من</th><th>إلى</th><th class="r">المبيعات</th><th class="r">الفرق</th><th></th></tr></thead><tbody>
-      ${hist.map((h) => { const t = D.shiftStats(s, h); return `<tr><td class="mono">${h.z || (h.close ? '' : 'مفتوحة')}</td><td>${esc(D.staff(h.user).short)} · كاشير ${h.reg}</td><td class="en nw">${D.time(h.open)}</td><td class="en nw">${h.close ? D.time(h.close) : '—'}</td><td class="r">${money(t.total)}</td><td class="r">${h.close ? `<span class="pill ${h.variance < 0 ? 'pill--red' : h.variance > 0 ? 'pill--amber' : 'pill--go'}">${h.variance < 0 ? 'عجز ' : h.variance > 0 ? 'زيادة ' : 'مطابق '}${h.variance ? fmt(Math.abs(h.variance)) : ''}</span>` : '—'}</td><td>${h.close ? `<button class="btn btn--soft btn--sm" data-z="${h.id}">Z</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
+      ${hist.map((h) => { const t = D.shiftStats(s, h); return `<tr><td class="mono">${h.z || (h.close ? '' : 'مفتوحة')}</td><td>${esc(D.staff(h.user).short)} · كاشير ${h.reg}</td><td class="nw">${esc(D.dateArS(h.open))} · ${D.time(h.open)}</td><td class="nw">${h.close ? (D.dateNum(h.close) !== D.dateNum(h.open) ? esc(D.dateArS(h.close)) + ' · ' : '') + D.time(h.close) : '—'}</td><td class="r">${money(t.total)}</td><td class="r">${h.close ? `<span class="pill ${h.variance < 0 ? 'pill--red' : h.variance > 0 ? 'pill--amber' : 'pill--go'}">${h.variance < 0 ? 'عجز ' : h.variance > 0 ? 'زيادة ' : 'مطابق '}${h.variance ? fmt(Math.abs(h.variance)) : ''}</span>` : '—'}</td><td>${h.close ? `<button class="btn btn--soft btn--sm" data-z="${h.id}">Z</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`;
     if ($('#x', view)) $('#x', view).addEventListener('click', () => zModal(sh, false));
     if ($('#po', view)) $('#po', view).addEventListener('click', openPayout);
     if ($('#close', view)) $('#close', view).addEventListener('click', closeShift);
@@ -1534,7 +1599,7 @@
     });
     const yd = days.find((d) => d.day === ydKey);
     const seg = `<div class="seg" id="rg">${[['today', 'Today', 'اليوم'], ['yday', 'Yesterday', 'أمس'], ['week', '7 days', 'أسبوع'], ['month', '30 days', 'شهر']].map(([k, en, l]) => `<button data-r="${k}" class="${rng === k ? 'on' : ''}">${bi(en, l)}</button>`).join('')}</div>`;
-    const head = `<div class="vh"><div><span class="label">Reports · ${D.dateAr()}</span><h1>The numbers</h1><p>من فواتير المحل الحقيقية فقط. كل يوم يُقفل ويُؤرشف تلقائيًا الساعة ${D.OPEN_H} صباحًا.</p></div><div class="vh__act">${seg}</div></div>`;
+    const head = `<div class="vh"><div><span class="label">Reports · ${D.dateAr()}</span><h1>The numbers</h1><p>من فواتير المحل الحقيقية فقط. كل يوم يُقفل ويُؤرشف تلقائيًا الساعة ${D.hourAr(D.OPEN_H)}.</p></div><div class="vh__act">${seg}</div></div>`;
     if (!agg.orders) {
       view.innerHTML = head + `<div class="card empty">${I('chart')}<b style="color:var(--ink-2)">${bi('No sales yet', 'لا توجد مبيعات في هذه الفترة بعد')}</b><span>${rng === 'today' ? 'أول فاتورة اليوم ستظهر هنا مباشرة.' : 'الأيام السابقة تظهر هنا بعد أول يوم تشغيل كامل.'}</span></div>`;
     } else {
@@ -1564,15 +1629,17 @@
       if (window.matchMedia('(max-width:900px)').matches) $('#r2', view).style.gridTemplateColumns = 'minmax(0,1fr)';
     }
     // فواتير اليوم كاملة (الأحدث فوق) ومين حضّر إيه — بتتحدّث مع كل فاتورة جديدة، حتى قبل أول فاتورة مدفوعة
-    if (rng === 'today') {
-      const invs = D.today(s).filter((o) => o.status !== 'new' || o.inv).slice().reverse();
+    if (rng === 'today' || rng === 'yday') {
+      const dayOrders = rng === 'today' ? D.today(s) : s.orders.filter((o) => o.day === ydKey);
+      const invs = dayOrders.filter((o) => o.status !== 'new' || o.inv).sort((a, b) => b.ts - a.ts);
       const prep = {};
-      D.today(s).forEach((o) => D.madeBy(o).forEach((x) => { const k = x.by + '|' + x.st; const p = prep[k] = prep[k] || { by: x.by, st: x.st, n: 0, t: 0, tn: 0 }; p.n++; if (x.start && x.ready) { p.t += x.ready - x.start; p.tn++; } }));
-      const prepCard = Object.keys(prep).length ? `<div class="card" style="margin-top:14px"><div class="card__h"><h3><span class="label">Prep</span>التحضير حسب الموظف اليوم</h3></div><div class="tbl-wrap" style="border:0"><table class="tbl"><thead><tr><th>الموظف</th><th>الشاشة</th><th class="r">طلبات جهّزها</th><th class="r">متوسط التحضير</th></tr></thead><tbody>${Object.values(prep).sort((a, b) => b.n - a.n).map((p) => `<tr><td><b>${esc(D.staff(p.by).name)}</b><br><small class="muted">${(D.ROLES[D.staff(p.by).role] || {}).ar || ''}</small></td><td>${D.STATIONS[p.st] ? D.STATIONS[p.st].ar : p.st}</td><td class="r num">${p.n}</td><td class="r num">${p.tn ? D.mmss(p.t / p.tn) : '—'}</td></tr>`).join('')}</tbody></table></div></div>` : '';
-      const invCard = invs.length ? `<div class="card" style="margin-top:14px" id="rInv"><div class="card__h"><h3><span class="label">Invoices</span>فواتير اليوم</h3><span class="pill">${invs.length} فاتورة</span></div>
+      dayOrders.forEach((o) => D.madeBy(o).forEach((x) => { const k = x.by + '|' + x.st; const p = prep[k] = prep[k] || { by: x.by, st: x.st, n: 0, t: 0, tn: 0 }; p.n++; if (x.start && x.ready) { p.t += x.ready - x.start; p.tn++; } }));
+      const prepCard = Object.keys(prep).length ? `<div class="card" style="margin-top:14px"><div class="card__h"><h3><span class="label">Prep</span>التحضير حسب الموظف ${rng === 'today' ? 'اليوم' : 'أمس'}</h3></div><div class="tbl-wrap" style="border:0"><table class="tbl"><thead><tr><th>الموظف</th><th>الشاشة</th><th class="r">طلبات جهّزها</th><th class="r">متوسط التحضير</th></tr></thead><tbody>${Object.values(prep).sort((a, b) => b.n - a.n).map((p) => `<tr><td><b>${esc(D.staff(p.by).name)}</b><br><small class="muted">${(D.ROLES[D.staff(p.by).role] || {}).ar || ''}</small></td><td>${D.STATIONS[p.st] ? D.STATIONS[p.st].ar : p.st}</td><td class="r num">${p.n}</td><td class="r num">${p.tn ? D.mmss(p.t / p.tn) : '—'}</td></tr>`).join('')}</tbody></table></div></div>` : '';
+      const invCard = invs.length ? `<div class="card" style="margin-top:14px" id="rInv"><div class="card__h"><h3><span class="label">Invoices</span>${rng === 'today' ? 'فواتير اليوم' : 'فواتير أمس'}</h3><span class="pill">${invs.length} فاتورة</span></div>
         <div class="tbl-wrap" style="border:0;max-height:${invAll ? 'none' : '460px'};overflow:auto"><table class="tbl"><thead><tr><th>الوقت</th><th>الفاتورة</th><th>الطلب</th><th>المصدر</th><th>الأصناف</th><th>الدفع</th><th>الكاشير</th><th class="r">الإجمالي</th><th>الحالة</th></tr></thead>
-        <tbody>${(invAll ? invs : invs.slice(0, 15)).map((o) => `<tr class="click" data-o="${o.id}"><td class="nw en">${D.time(o.ts)}</td><td class="mono nw" style="font-size:12px">${o.inv || '—'}</td><td class="en"><b>#${o.no}</b></td><td class="nw">${D.CH[o.ch].ar}${o.table ? ' ' + o.table : ''}</td><td>${esc(o.lines.map((l) => `${l.qty}× ${D.prod(l.pid).ar}`).join('، '))}</td><td class="nw">${o.pays.map((p) => `<span class="pill">${D.PAY[p.m] ? D.PAY[p.m].ar : p.m}</span>`).join(' ') || '—'}</td><td class="nw">${esc(D.who(o).short)}</td><td class="r nw">${money(o.total)}</td><td class="nw">${statusPill(o)}</td></tr>`).join('')}</tbody></table></div>
-        ${invs.length > 15 ? `<button class="btn btn--ghost btn--block" id="rInvAll" style="margin-top:10px">${invAll ? bi('Show less', 'آخر 15 فاتورة فقط') : bi('Show all · ' + invs.length, 'اعرض كل فواتير اليوم')}</button>` : ''}</div>` : '';
+        <tbody>${(invAll ? invs : invs.slice(0, 15)).map((o) => `<tr class="click" data-o="${o.id}"><td class="nw en">${D.time(o.ts)}</td><td class="mono nw" style="font-size:12px">${o.inv || '—'}</td><td class="en"><b>#${o.no}</b></td><td class="nw">${D.CH[o.ch] ? D.CH[o.ch].ar : esc(o.ch || '')}${o.table ? ' ' + o.table : ''}</td><td>${esc(o.lines.map((l) => `${l.qty}× ${D.prod(l.pid).ar}`).join('، '))}</td><td class="nw">${o.pays.map((p) => `<span class="pill">${D.PAY[p.m] ? D.PAY[p.m].ar : p.m}</span>`).join(' ') || '—'}</td><td class="nw">${esc(D.who(o).short)}</td><td class="r nw">${money(o.total)}</td><td class="nw">${statusPill(o)}</td></tr>`).join('')}</tbody></table></div>
+        ${invs.length > 15 ? `<button class="btn btn--ghost btn--block" id="rInvAll" style="margin-top:10px">${invAll ? bi('Show less', 'آخر 15 فاتورة فقط') : bi('Show all · ' + invs.length, rng === 'today' ? 'اعرض كل فواتير اليوم' : 'اعرض كل فواتير أمس')}</button>` : ''}</div>`
+        : rng === 'today' && s.orders.some((o) => o.day === ydKey) ? `<div class="card empty" style="margin-top:14px">${I('orders')}<span>لا توجد فواتير اليوم حتى الآن. فواتير أمس: اضغط «Yesterday · أمس» فوق.</span></div>` : '';
       view.insertAdjacentHTML('beforeend', prepCard + invCard);
       if ($('#rInv', view)) $('#rInv', view).addEventListener('click', (e) => { if (e.target.closest('#rInvAll')) { invAll = !invAll; renderReports(view); return; } const row = e.target.closest('[data-o]'); if (row) orderDetail(row.dataset.o); });
     }
@@ -2459,6 +2526,7 @@
     if (me && D.STAFF.some((u) => u.id === me) && prepSt(me)) { kdsSt = prepSt(me); if (!location.hash) route = 'kds'; }
     shell();
     D.on(onChange);
+    if (D.REMOTE && window.DARJ_LINK && window.DARJ_LINK.on) { window.DARJ_LINK.on(drawHubWho); setInterval(drawHubWho, 10000); }
     setInterval(() => { if (me) chrome(); }, 30000);
     D.alertLoop(() => (!!me || autoLocked) && S().orders.some((o) => o.status === 'new'));
     // قفل تلقائي بعد مدة من غير استخدام (من الإعدادات) — السلة بتفضل زي ما هي، وشاشة التحضير مابتتقفلش

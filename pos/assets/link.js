@@ -229,8 +229,23 @@
       v: 1, rev: s.rev || 0, day: s.day, train: !!D.TRAIN, real: !!D.REAL, seq: { no: s.seq.no },
       store: { nameAr: D.STORE.nameAr, nameEn: D.STORE.nameEn, branchAr: D.STORE.branchAr, branchEn: D.STORE.branchEn, tagEn: D.STORE.tagEn, addr: D.STORE.addr },
       settings: { sound: s.settings.sound, orderTone: s.settings.orderTone, orderVol: s.settings.orderVol, orderRepeat: s.settings.orderRepeat, loyalNeed: s.settings.loyalNeed, vatOn: s.settings.vatOn, offline: s.settings.offline, kiosk: s.settings.kiosk || null },
-      prices: s.prices || {}, avail: s.avail || {}, routes: s.routes || {}, tally, staff: D.pubStaff(), orders: live.map(slim),
+      prices: s.prices || {}, avail: s.avail || {}, routes: s.routes || {}, tally, staff: D.pubStaff(), orders: live.map(slim), who: hubWho(),
     };
+  }
+  /* مين شغّال على كاشير المحل دلوقتي — بيروح مع كل نبضة للجوال (الكاشير الكامل وملخص اليوم) */
+  let whoNow = { u: '', since: 0 };
+  function hubWho() {
+    let u = ''; try { u = sessionStorage.getItem('darj:me') || ''; } catch (e) { /* */ }
+    const x = u ? (D.STAFF || []).find((y) => y && y.id === u && !y.off) : null;
+    if (!x) u = '';
+    if (u !== whoNow.u) {
+      // أول مرة بعد فتح الصفحة: وقت الدخول من سجل الحركات، وإلا من دلوقتي
+      const lg = u ? ((D.state().log || []).filter((l) => l.user === u && l.act === 'login' && /تسجيل دخول/.test(l.txt || '') && !/شاشة|جوال/.test(l.txt || '')).pop()) : null;
+      whoNow = { u, since: u ? (whoNow.u === '' && lg ? lg.ts : Date.now()) : Date.now() };
+    }
+    const s = D.state(); const sh = (s.shifts || []).find((y) => !y.close && (y.reg || 1) === 1);
+    return { u, name: x ? x.name : '', role: x ? x.role : '', since: whoNow.since, reg: 1,
+      shift: sh ? { open: sh.open, by: (D.staff(sh.user) || {}).name || '' } : null };
   }
   let snapT = 0, lastSnapAt = 0;
   const hasPeers = () => L.peers.some((p) => p.role && p.role !== 'hub');
@@ -238,10 +253,11 @@
   function phoneStats() {
     const s = D.state(); const all = s.orders.filter((o) => !o.sim);
     const sum = { count: 0, gross: 0, refunds: 0, by: {}, open: 0, unpaid: 0 }; const items = {};
+    const today = new Set(D.today(s));
     all.forEach((o) => {
       if (o.unpaid && o.status !== 'rejected' && o.status !== 'cancelled') sum.unpaid++;
       if (['new', 'prep', 'ready'].includes(o.status)) sum.open++;
-      if (o.status === 'rejected' || o.unpaid) return;
+      if (o.status === 'rejected' || o.unpaid || !today.has(o)) return; // كشف اليوم = فواتير يوم الشغل الحالي بس (الجهاز بيحتفظ بآخر يومين عشان المرتجعات)
       sum.count++; sum.gross += o.total || 0; sum.refunds += o.refunded || 0;
       (o.pays || []).forEach((p) => { sum.by[p.m] = (sum.by[p.m] || 0) + (p.a || 0); });
       (o.lines || []).forEach((l) => { if (!l || !l.pid) return; const it = items[l.pid] || (items[l.pid] = { n: (D.prod(l.pid) || {}).ar || l.note || 'صنف', q: 0 }); it.q += l.qty || 0; });
@@ -249,13 +265,22 @@
     sum.gross = D.r2(sum.gross); sum.refunds = D.r2(sum.refunds); Object.keys(sum.by).forEach((k) => { sum.by[k] = D.r2(sum.by[k]); });
     const inv = all.filter((o) => o.inv || o.status !== 'new').sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 80).map((o) => {
       const sp = {}; Object.keys(o.sp || {}).forEach((k) => { const x = o.sp[k] || {}; if (x.by || x.rby) sp[k] = x.rby || x.by; });
-      return { id: o.id, no: o.no, inv: o.inv, ts: o.ts, total: o.total, refunded: o.refunded || 0, status: o.status, unpaid: !!o.unpaid, cancelled: !!o.cancelled, ch: o.ch, name: o.name || '', staff: o.staff || '', doneBy: o.doneBy || '', sp,
+      return { id: o.id, no: o.no, inv: o.inv, ts: o.ts, day: o.day || s.day, total: o.total, refunded: o.refunded || 0, status: o.status, unpaid: !!o.unpaid, cancelled: !!o.cancelled, ch: o.ch, name: o.name || '', staff: o.staff || '', doneBy: o.doneBy || '', sp,
         pays: (o.pays || []).map((p) => ({ m: p.m, a: p.a })), lines: (o.lines || []).map((l) => ({ n: (D.prod(l.pid) || {}).ar || l.note || 'صنف', q: l.qty, t: l.total, note: l.pid === 'site_item' ? '' : l.note || '' })) };
     });
     const sh = (s.shifts || []).find((x) => !x.close); const names = {}; (s.staff || []).forEach((u) => { if (u && u.id) names[u.id] = u.name; });
-    return { v: 1, day: s.day, at: Date.now(), store: D.STORE.nameAr, sum, top: Object.values(items).sort((a, b) => b.q - a.q).slice(0, 6), inv, names,
+    // كشف الوردية: الوردية المفتوحة، ولو مفيش فآخر وردية اتقفلت النهارده
+    const rep = sh || (s.shifts || []).filter((x) => x.close).sort((a, b) => b.close - a.close)[0];
+    let shiftRep = null;
+    if (rep) {
+      const t = D.shiftStats(s, rep); const by = {}; Object.keys(t.by).forEach((k) => { if (t.by[k]) by[k] = t.by[k]; });
+      shiftRep = { id: rep.id, reg: rep.reg || 1, by: names[rep.user] || '', open: rep.open, close: rep.close || 0, z: rep.z || '', float: rep.float, count: t.count, total: t.total, refunds: t.refunds, net: D.r2(t.total - t.refunds), pays: by, payouts: t.payouts,
+        expected: rep.close ? rep.expected : t.expected, counted: rep.close ? rep.counted : null, variance: rep.close ? rep.variance : null, closedBy: rep.closedBy ? names[rep.closedBy] || '' : '' };
+    }
+    return { v: 1, day: s.day, at: Date.now(), store: D.STORE.nameAr, sum, from: D.bizStart(Date.now()), hours: D.dayHours(), shiftRep, top: Object.values(items).sort((a, b) => b.q - a.q).slice(0, 6), inv, names, who: hubWho(),
       shift: sh ? { by: names[sh.user] || '', open: sh.open, float: sh.float, expected: D.expectedCash(s, sh) } : null, soldOut: Object.keys(s.avail || {}).filter((k) => s.avail[k] === false).length, lastInv: s.seq.inv || 0 };
   }
+  L.phoneStats = phoneStats; // للاختبار ولأي شاشة محتاجة نفس الملخّص
   function snapNow() {
     clearTimeout(snapT); snapT = 0; if (!hasPeers()) return; lastSnapAt = Date.now(); send({ t: 'snap', snap: snapshot() });
     if (L.peers.some((p) => p.role === 'phone')) { try { send({ t: 'stats', stats: phoneStats() }); } catch (e) { console.error(e); } }
@@ -292,7 +317,7 @@
   const authed = (from) => { const x = auths()[devOf(from)]; return !!(x && Date.now() - x.at < AUTH_MS && (D.STAFF || []).some((u) => u.id === x.uid && !u.off)); };
   function masked(s) { const o = {}; Object.keys(s).forEach((k) => { if (!SKIPK.has(k)) o[k] = s[k]; }); o.staff = (s.staff || []).map((u) => Object.assign({}, u, { pin: u.pin ? MASK : '' })); return o; }
   let cacheObj = null, cacheRev = -1;
-  function sendFull(to) { const s = D.state(); const st = masked(s); cacheObj = clone(st); cacheRev = s.rev || 0; send({ t: 'full', to, rev: cacheRev, train: !!D.TRAIN, st }); }
+  function sendFull(to) { const s = D.state(); const st = masked(s); cacheObj = clone(st); cacheRev = s.rev || 0; send({ t: 'full', to, rev: cacheRev, train: !!D.TRAIN, who: hubWho(), st }); }
   function sendDelta() {
     if (!cacheObj || !L.peers.some((p) => p.role === 'remote')) return;
     const s = D.state(); if ((s.rev || 0) === cacheRev) return;
@@ -370,7 +395,11 @@
   const pending = new Map();
   let remoteCart = null, lastSnap = null;
   const SNAP = BASE + ':snap';
+  const setWho = (w) => { if (!w) return; const changed = J(w) !== L.hubJ; L.hubJ = J(w); L.hub = w; if (changed) fire(); };
   function onSat(m) {
+    if (m.t === 'snap' && m.snap && m.snap.who) setWho(m.snap.who);
+    else if (m.t === 'stats' && m.stats && m.stats.who) setWho(m.stats.who);
+    else if (m.t === 'full' && m.who) setWho(m.who);
     if (ROLE === 'remote' && remoteMsg(m)) return;
     if (m.t === 'snap' && m.snap) {
       L.last = Date.now();
