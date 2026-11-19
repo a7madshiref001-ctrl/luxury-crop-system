@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<script src="assets/canonical.js?v=24"></script>
+<script src="assets/canonical.js?v=25"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#F4F0E8">
@@ -12,8 +12,8 @@
 <link rel="icon" href="assets/brand/logo-mark.png" type="image/png">
 <link rel="apple-touch-icon" href="assets/brand/logo-mark.png">
 
-<link rel="stylesheet" href="assets/darj.css?v=24">
-<link rel="stylesheet" href="assets/brand.css?v=24">
+<link rel="stylesheet" href="assets/darj.css?v=25">
+<link rel="stylesheet" href="assets/brand.css?v=25">
 <style>
   body{min-height:100dvh}
   .kbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line)}
@@ -30,7 +30,7 @@
   @media (max-width:900px){.kstat{display:none}}
   @media (max-width:640px){.clock{display:none}.lnk span{display:none}.lnk{width:30px;padding:0;justify-content:center}}
 </style>
-<script src="assets/pwa.js?v=24" defer></script>
+<script src="assets/pwa.js?v=25" defer></script>
 </head>
 <body>
 <header class="kbar">
@@ -48,16 +48,16 @@
   <span class="clock" id="clk"></span>
 </header>
 <main id="k"></main>
-<script src="assets/config.js?v=24"></script>
-<script src="assets/menu.js?v=24"></script>
-<script src="assets/livemenu.js?v=24"></script>
-<script src="assets/darj.js?v=24"></script>
-<script src="assets/kds.js?v=24"></script>
+<script src="assets/config.js?v=25"></script>
+<script src="assets/menu.js?v=25"></script>
+<script src="assets/livemenu.js?v=25"></script>
+<script src="assets/darj.js?v=25"></script>
+<script src="assets/kds.js?v=25"></script>
 <script>
   window.DARJ_ROLE = 'kds';
 </script>
-<script src="assets/link.js?v=24"></script>
-<script src="assets/gate.js?v=24"></script>
+<script src="assets/link.js?v=25"></script>
+<script src="assets/gate.js?v=25"></script>
 <script>
 (function () {
   const D = window.DARJ;
@@ -75,6 +75,7 @@
   const kme = document.getElementById('kme');
   function paintMe() {
     kme.hidden = !me;
+    L.duty(me ? me.id : '', me ? G.since() : 0); // الكاشير وجوال المدير بيعرضوا مين شغّال على الشاشة دي
     if (me) kme.innerHTML = `${D.av(me)}<span class="me__txt"><b>${D.esc(me.short || me.name)}</b><small>${D.esc((D.ROLES[me.role] || {}).ar || '')} · خروج</small></span>`;
   }
   function ask() {

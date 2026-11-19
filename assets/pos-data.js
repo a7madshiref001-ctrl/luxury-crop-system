@@ -127,6 +127,7 @@
       store: (h && h.store) || {}, settings: (h && h.settings) || {}, staffCount: staff.filter(function (u) { return !u.off; }).length,
       soldOut: h && h.avail ? Object.keys(h.avail).filter(function (k) { return h.avail[k] === false; }) : [],
       lastInvoice: h && h.seq ? h.seq.inv || 0 : 0,
+      onduty: h && h.onduty ? h.onduty : null,
       shift: open ? { id: open.id, by: who(open.user), openedAt: open.open, float: Number(open.float) || 0, expected: expectedCash(open, shOrders, h.payouts) } : null,
       lastClosed: last,
       shiftRep: rep ? shiftReport(rep, shOrders, h.payouts, who) : null,

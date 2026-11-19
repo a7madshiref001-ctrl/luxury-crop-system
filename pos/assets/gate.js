@@ -11,7 +11,9 @@
   const esc = D.esc;
   const bi = (en, ar) => `<span class="bi"><b>${en}</b><small>${ar}</small></span>`;
   const sid = () => { try { return sessionStorage.getItem(KEY) || ''; } catch (e) { return ''; } };
-  const put = (id) => { try { if (id) sessionStorage.setItem(KEY, id); else sessionStorage.removeItem(KEY); } catch (e) { /* */ } };
+  // وقت دخول الموظف بيتحفظ مع اسمه، عشان الكاشير والجوال يعرضوا «شغال من الساعة كام»
+  const put = (id) => { try { if (id) { if (sessionStorage.getItem(KEY) !== id || !sessionStorage.getItem(KEY + ':at')) sessionStorage.setItem(KEY + ':at', String(Date.now())); sessionStorage.setItem(KEY, id); } else { sessionStorage.removeItem(KEY); sessionStorage.removeItem(KEY + ':at'); } } catch (e) { /* */ } };
+  G.since = () => { try { return Number(sessionStorage.getItem(KEY + ':at')) || 0; } catch (e) { return 0; } };
 
   G.users = () => {
     if (D.SAT) return (D.STAFF || []).filter((u) => u && u.id);

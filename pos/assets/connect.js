@@ -193,6 +193,8 @@
     if (!force && s.rev === lastRev && s.day === lastDay) return true;
     const copy = Object.assign({}, s);
     delete copy.link;
+    const LK = window.DARJ_LINK;
+    if (LK && LK.hubWho) { try { copy.onduty = Object.assign({ at: Date.now() }, LK.hubWho()); } catch (e) { /* */ } }
     const r = await c.rpc('pos_save_state', { p_key: STORE, p_day: s.day, p_device: DEV, p_rev: s.rev || 0, p_state: copy, p_version: VERSION, p_force: !!force });
     if (r.error) throw r.error;
     if (!r.data || !r.data.ok) { paused = true; setCloud({ state: 'conflict', conflict: r.data || {} }); D.toast('النسخة على السيرفر محتاجة قرار المدير', 'افتح Settings ← الربط مع السيرفر', { warn: 1, ic: 'alert', ms: 9000 }); return false; }
@@ -226,6 +228,10 @@
     setCloud({ on: true, state: 'saving', email });
     D.hooks.status = (o, st) => { const out = STATUS_OUT[st]; if (out && o.ext) queueStatus(o.ext, out); };
     D.on((why) => { if (why !== 'cart' && why !== 'link' && cloud.on) soon(); });
+    // حد دخل أو خرج من شاشة الباريستا/المطبخ أو الكاشير: نسخة الحالة تتحفظ تاني عشان /live يعرف
+    let dutyJ = '';
+    const LK = window.DARJ_LINK;
+    if (LK && LK.on && LK.hubWho) LK.on(() => { let j = ''; try { const w = LK.hubWho(); j = JSON.stringify([w.u, w.prep]); } catch (e) { return; } if (j === dutyJ) return; const first = !dutyJ; dutyJ = j; if (!first && cloud.on) { lastRev = -1; lastState = 0; soon(); } });
     window.addEventListener('online', () => { if (cloud.on) schedule(0); });
     await syncCatalog();
     await pull();
@@ -251,6 +257,7 @@
     const r = await c.from('pos_state').select('day,rev,state,updated_at').eq('store_key', STORE).order('day', { ascending: false }).limit(1).maybeSingle();
     if (r.error || !r.data || !r.data.state || r.data.state.v !== 1) throw new Error('no copy');
     try { await D.archive({ day: 'before-restore-' + Date.now(), state: D.state() }); } catch (e) { /* */ }
+    delete r.data.state.onduty;
     D.installState(r.data.state);
     save(SIG_KEY, {});
     const out = await c.rpc('pos_save_state', { p_key: STORE, p_day: r.data.state.day, p_device: DEV, p_rev: r.data.state.rev || 0, p_state: r.data.state, p_version: VERSION, p_force: true });

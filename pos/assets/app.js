@@ -56,6 +56,7 @@
         <div class="top__right">
           ${D.REAL ? '' : `<button class="guide-btn" id="guide" title="جولة تفاعلية">${I('play')}<span>Guide · جولة</span></button>`}
           ${D.REMOTE ? '<button class="hubwho" id="hubWho" title="مين على كاشير المحل الآن"></button>' : ''}
+          ${D.LIVE ? '<button class="duty" id="duty" title="مين شغّال على الباريستا والمطبخ الآن"></button>' : ''}
           <button class="net" id="net" title="حالة الاتصال"></button>
           <button class="icon-btn" id="bell" aria-label="النشاط">${I('bell')}<span class="badge" id="bellN" hidden></span></button>
           <button class="me" id="me"></button>
@@ -66,6 +67,7 @@
     </div>`;
     $('#net').addEventListener('click', toggleNet);
     if ($('#hubWho')) $('#hubWho').addEventListener('click', hubWhoModal);
+    if ($('#duty')) { $('#duty').addEventListener('click', dutyModal); setTimeout(drawDuty, 600); }
     if ($('#guide')) $('#guide').addEventListener('click', openGuide);
     $('#bell').addEventListener('click', openFeed);
     $('#me').addEventListener('click', openMe);
@@ -97,6 +99,7 @@
     $('#bellN').hidden = !unread; $('#bellN').textContent = unread;
     $('#me').innerHTML = `${D.av(user)}<span class="me__txt"><b>${esc(user.short)}</b><small>${D.ROLES[user.role].ar}</small></span>`;
     drawHubWho();
+    drawDuty();
     drawInbox();
   }
   /* من الجوال: مين مسجّل دخول على كاشير المحل دلوقتي (بيوصل مع كل نبضة من الكاشير) */
@@ -115,6 +118,41 @@
       : w && w.u ? `<i class="dot pulse"></i><span class="hubwho__t"><b>${esc(w.name)}</b><small>On the cashier · ${esc(role)} من ${D.time(w.since)}</small></span>`
       : `${I('lock', 'sm')}<span class="hubwho__t"><b>Cashier locked</b><small>${w ? 'لا أحد مسجّل على كاشير المحل' : 'بانتظار كاشير المحل'}</small></span>`;
   }
+  /* مين شغّال على شاشات التحضير (الباريستا والمطبخ) دلوقتي — على كاشير المحل من الشاشات نفسها، وعلى الجوال من كاشير المحل */
+  let dutyHooked = false;
+  function dutyList() {
+    const L = window.DARJ_LINK || {};
+    if (D.REMOTE) return (L.hub && L.hub.prep) || [];
+    return L.onDuty ? L.onDuty() : [];
+  }
+  const dutyName = (x) => x.short || String(x.name || '').split(' ')[0] || '—';
+  function drawDuty() {
+    const el = $('#duty'); if (!el) return;
+    const LK = window.DARJ_LINK; if (!dutyHooked && LK && LK.on) { dutyHooked = true; LK.on(drawDuty); } // link.js بيتحمّل بعد app.js
+    const list = dutyList();
+    el.className = 'duty' + (list.length ? '' : ' idle');
+    el.innerHTML = Object.keys(D.STATIONS).map((st) => {
+      const xs = list.filter((x) => x.st === st);
+      const nm = xs.length ? esc(dutyName(xs[0])) + (xs.length > 1 ? ' +' + (xs.length - 1) : '') : '—';
+      return `<span class="duty__s${xs.length ? '' : ' off'}" title="${esc(D.STATIONS[st].ar)}">${I(D.STATIONS[st].ic, 'sm')}<b class="duty__nm">${nm}</b><b class="duty__n">${xs.length}</b></span>`;
+    }).join('');
+  }
+  function dutyRows(list) {
+    return Object.keys(D.STATIONS).map((st) => {
+      const S = D.STATIONS[st]; const xs = list.filter((x) => x.st === st);
+      return `<div class="duty-st"><div class="duty-st__h">${I(S.ic, 'sm')}${bi(S.en, S.ar)}<span class="muted">${xs.length ? xs.length + ' مسجّل' : 'لا أحد'}</span></div>
+        ${xs.length ? xs.map((x) => `<div class="set-row"><span><b>${esc(x.name)}</b><small>${esc((D.ROLES[x.role] || {}).ar || '')} · ${x.far ? 'على جهاز مربوط' : 'على نفس جهاز الكاشير'}</small></span><span>${x.since ? 'من ' + D.time(x.since) : 'الآن'}</span></div>`).join('')
+          : `<div class="set-row"><span class="muted">لا أحد مسجّل على شاشة ${esc(S.ar)} الآن</span><span></span></div>`}</div>`;
+    }).join('');
+  }
+  function dutyModal() {
+    const L = window.DARJ_LINK || {};
+    const off = D.REMOTE && !(L.hubOnline && L.hubOnline());
+    D.modal(`${D.head(bi('On duty now', 'مين شغّال الآن'), off ? 'كاشير المحل غير متصل — دي آخر معلومة وصلت منه' : 'الموظفين المسجّلين على شاشات التحضير بأسمائهم')}
+      <div class="modal__b">${dutyRows(dutyList())}
+        <p class="muted" style="font-size:12px;line-height:1.7;margin-top:10px">الشاشة بتظهر هنا لما الموظف يدخل عليها باسمه ورقمه، وبتختفي لما يخرج أو تتقفل الشاشة (خلال نص دقيقة تقريبًا).</p></div>
+      <div class="modal__f"><button class="btn btn--ghost" data-close>تمام</button></div>`, { cls: 'modal--sm' });
+  }
   function hubWhoModal() {
     const { on, w, role } = hubWhoInfo();
     const sh = w && w.shift;
@@ -126,6 +164,7 @@
         ${row('الوردية', sh ? `مفتوحة من ${esc(D.dateAr(sh.open))} · ${D.time(sh.open)}${sh.by ? ' — فتحها ' + esc(sh.by) : ''}` : 'لا توجد وردية مفتوحة')}
         ${row('الجهاز', `كاشير ${(w && w.reg) || 1}`)}
         ${row('أنت هنا باسم', esc(D.staff(me).name))}
+        ${w && w.prep ? dutyRows(w.prep) : ''}
       </div>
       <div class="modal__f"><button class="btn btn--ghost" data-close>تمام</button></div>`, { cls: 'modal--sm' });
   }

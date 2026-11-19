@@ -51,7 +51,14 @@
     const shift = R ? '' : (st.shift
       ? `<div class="ph__r"><span>الوردية مفتوحة<small>${esc(st.shift.by || '')} · من ${esc(date(st.shift.open))} ${clock(st.shift.open)}</small></span><b></b></div><div class="ph__r"><span>النقد المتوقع في الدرج<small>افتتاحي ${money(st.shift.float)} ر.س</small></span><b>${money(st.shift.expected)}</b></div>`
       : '<div class="ph__r"><span>الوردية<small>لا توجد وردية مفتوحة</small></span><b></b></div>');
-    const nowRows = who + shift;
+    // On duty: الكاشير + الباريستا + المطبخ — حتى لو أكتر من موظف على نفس الشاشة
+    const prep = (w && w.prep) || [];
+    const dutyRow = (st) => {
+      const xs = prep.filter((x) => x.st === st);
+      return `<div class="ph__r"><span>${STN[st]} الآن<small>${xs.length ? xs.map((x) => esc(x.name) + ' من ' + clock(x.since)).join(' · ') : 'لا أحد مسجّل على الشاشة'}</small></span><b>${xs.length ? esc(xs.map((x) => x.name.split(' ')[0]).join('، ')) : '—'}</b></div>`;
+    };
+    const duty = !w ? '' : `<div class="ph__c"><h3>On duty · مين شغّال الآن</h3>${who}${w.prep ? dutyRow('bar') + dutyRow('kitchen') : ''}</div>`;
+    const nowRows = shift;
     const sr = (a, b, sub, cls) => `<div class="ph__r${cls ? ' ' + cls : ''}"><span>${a}${sub ? `<small>${sub}</small>` : ''}</span><b>${b}</b></div>`;
     const shiftCard = !R ? '' : `<div class="ph__big ph__big--sh"><small>Shift report · كشف الوردية · ${R.close ? 'اتقفلت' + (R.z ? ' ' + esc(R.z) : '') : 'مفتوحة الآن'}${R.reg > 1 ? ' · كاشير ' + R.reg : ''}</small><b>${money(R.net)}</b>`
       + `<span>صافي مبيعات الوردية · ${esc(R.by || '—')} · من ${esc(date(R.open))} ${clock(R.open)}${R.close ? ' لحد ' + clock(R.close) : ''}</span>`
@@ -62,7 +69,7 @@
       + (R.close ? sr('المعدود فعلًا', money(R.counted), esc(R.closedBy ? 'قفلها ' + R.closedBy : '')) + sr(R.variance < 0 ? 'عجز' : R.variance > 0 ? 'زيادة' : 'مطابق', money(Math.abs(R.variance || 0)), '', R.variance ? 'ph__r--bad' : '') : '')
       + `</div>${R.close ? '<p class="ph__note">لا توجد وردية مفتوحة الآن — ده كشف آخر وردية اتقفلت.</p>' : ''}</div>`;
     const multi = st.inv.some((x) => x.day && x.day !== st.day);
-    root.innerHTML = head(pill)
+    root.innerHTML = head(pill) + duty
       + `<div class="ph__big"><small>Day report · كشف اليوم · صافي المبيعات ر.س</small><b>${money(net)}</b><span>${st.from ? esc(date(st.from)) + ' · ' : ''}${esc(st.hours || '')}${st.hours ? '<br>' : ''}${s.count ? 'آخر فاتورة رقم ' + (st.lastInv || '—') : 'لا توجد فواتير اليوم بعد'}</span></div>`
       + `<div class="ph__g"><div><b>${s.count}</b><small>فواتير اليوم</small></div><div><b>${money(avg)}</b><small>متوسط الفاتورة</small></div><div><b>${money(s.refunds)}</b><small>مرتجعات</small></div></div>`
       + shiftCard

@@ -99,7 +99,7 @@
     ch.subscribe((s) => {
       if (s === 'SUBSCRIBED') {
         L.status = 'on';
-        ch.track({ role: ROLE, st: L.st, name: L.name, at: Date.now() });
+        ch.track(presence());
         if (ROLE === 'hub') snapNow(); else send({ t: 'hello' });
       } else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') L.status = 'err';
       else if (s === 'CLOSED') L.status = 'off';
@@ -210,7 +210,26 @@
     }
     return '';
   }
-  L.track = (meta) => { Object.assign(L, meta); if (ch && L.status === 'on') ch.track({ role: ROLE, st: L.st, name: L.name, at: Date.now() }); };
+  function presence() { return { role: ROLE, st: L.st, name: L.name, uid: L.uid || '', since: L.since || 0, at: Date.now() }; }
+  L.track = (meta) => { Object.assign(L, meta); if (ch && L.status === 'on') ch.track(presence()); beat(); };
+
+  /* ---------- مين شغّال على شاشات التحضير (الباريستا والمطبخ) ----------
+     الشاشة اللي عليها موظف داخل باسمه بتعلن عنه: على جهاز مربوط عن طريق الـpresence في القناة،
+     وعلى نفس جهاز الكاشير عن طريق نبضة في التخزين المحلي كل 10 ثواني. والكاشير بيجمعهم ويبعتهم مع «مين على الكاشير». */
+  const DUTY = BASE + ':duty:';
+  let dutyT = 0;
+  function beat() {
+    if (ROLE !== 'kds') return;
+    try { if (L.uid && !D.SAT) localStorage.setItem(DUTY + TAB, J({ uid: L.uid, st: L.st, since: L.since || 0, at: Date.now() })); else localStorage.removeItem(DUTY + TAB); } catch (e) { /* */ }
+  }
+  L.duty = (uid, since) => {
+    L.uid = uid || ''; L.since = uid ? since || Date.now() : 0;
+    L.track({});
+    if (!dutyT && ROLE === 'kds') {
+      dutyT = setInterval(beat, 10000);
+      window.addEventListener('pagehide', () => { try { localStorage.removeItem(DUTY + TAB); } catch (e) { /* */ } });
+    }
+  };
 
   /* =====================================================================
      HUB — جوه الكاشير (تاب واحد بس في الجهاز بيبقى المركز)
@@ -232,6 +251,23 @@
       prices: s.prices || {}, avail: s.avail || {}, routes: s.routes || {}, tally, staff: D.pubStaff(), orders: live.map(slim), who: hubWho(),
     };
   }
+  /* شاشات التحضير اللي عليها موظف دلوقتي: [{ u, name, role, st, since, far }] — far = على جهاز مربوط */
+  function onDuty() {
+    const out = [], seen = new Set();
+    const add = (p, far) => {
+      const u = (D.STAFF || []).find((y) => y && y.id === p.uid && !y.off);
+      if (!u || !D.STATIONS[p.st]) return;
+      const k = u.id + '|' + p.st; if (seen.has(k)) return; seen.add(k);
+      out.push({ u: u.id, name: u.name, short: u.short || '', role: u.role, st: p.st, since: Number(p.since) || 0, far: far ? 1 : 0 });
+    };
+    L.peers.forEach((p) => { if (p && p.role === 'kds' && p.uid) add(p, 1); });
+    try {
+      const keys = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.indexOf(DUTY) === 0) keys.push(k); }
+      keys.forEach((k) => { let x = null; try { x = JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { /* */ } if (x && x.uid && Date.now() - (x.at || 0) < 35000) add(x, 0); else localStorage.removeItem(k); });
+    } catch (e) { /* */ }
+    return out.sort((a, b) => (a.st === b.st ? a.since - b.since : a.st === 'bar' ? -1 : 1));
+  }
+  L.onDuty = onDuty;
   /* مين شغّال على كاشير المحل دلوقتي — بيروح مع كل نبضة للجوال (الكاشير الكامل وملخص اليوم) */
   let whoNow = { u: '', since: 0 };
   function hubWho() {
@@ -245,7 +281,7 @@
     }
     const s = D.state(); const sh = (s.shifts || []).find((y) => !y.close && (y.reg || 1) === 1);
     return { u, name: x ? x.name : '', role: x ? x.role : '', since: whoNow.since, reg: 1,
-      shift: sh ? { open: sh.open, by: (D.staff(sh.user) || {}).name || '' } : null };
+      shift: sh ? { open: sh.open, by: (D.staff(sh.user) || {}).name || '' } : null, prep: onDuty() };
   }
   let snapT = 0, lastSnapAt = 0;
   const hasPeers = () => L.peers.some((p) => p.role && p.role !== 'hub');
@@ -280,7 +316,8 @@
     return { v: 1, day: s.day, at: Date.now(), store: D.STORE.nameAr, sum, from: D.bizStart(Date.now()), hours: D.dayHours(), shiftRep, top: Object.values(items).sort((a, b) => b.q - a.q).slice(0, 6), inv, names, who: hubWho(),
       shift: sh ? { by: names[sh.user] || '', open: sh.open, float: sh.float, expected: D.expectedCash(s, sh) } : null, soldOut: Object.keys(s.avail || {}).filter((k) => s.avail[k] === false).length, lastInv: s.seq.inv || 0 };
   }
-  L.phoneStats = phoneStats; // للاختبار ولأي شاشة محتاجة نفس الملخّص
+  L.phoneStats = phoneStats;
+  L.hubWho = hubWho; // للاختبار ولأي شاشة محتاجة نفس الملخّص
   function snapNow() {
     clearTimeout(snapT); snapT = 0; if (!hasPeers()) return; lastSnapAt = Date.now(); send({ t: 'snap', snap: snapshot() });
     if (L.peers.some((p) => p.role === 'phone')) { try { send({ t: 'stats', stats: phoneStats() }); } catch (e) { console.error(e); } }
@@ -373,7 +410,12 @@
     D.mutate(() => D.log(null, 'settings', 'إلغاء ربط كل الشاشات — مفتاح ربط جديد'), 'set');
     hubUp();
   };
+  // أي تغيير في شاشات التحضير (حد دخل أو خرج أو الشاشة اتقفلت): الجوال يتحدّث على طول، والكاشير يرسم من جديد
+  let dutySig = '';
+  function dutyCheck() { const j = J(onDuty()); if (j === dutySig) return; dutySig = j; if (running && hasPeers()) snapSoon(); fire(); }
   function startHub() {
+    setInterval(dutyCheck, 5000);
+    window.addEventListener('storage', (e) => { if (e.key == null || e.key.indexOf(DUTY) === 0) setTimeout(dutyCheck, 50); });
     if (!L.ok) { L.status = 'off'; return; }
     D.hooks.cart = (c) => { if (running && hasPeers()) send({ t: 'cart', c }); }; // شاشة العميل على تابلت تاني
     D.on((why) => {
@@ -382,7 +424,7 @@
       if (why === 'link') return;
       snapSoon();
     });
-    L.on(() => { if (running && hasPeers() && Date.now() - lastSnapAt > 4000) snapSoon(); });
+    L.on(() => { dutyCheck(); if (running && hasPeers() && Date.now() - lastSnapAt > 4000) snapSoon(); });
     const check = () => { if (lead()) { if (!running) hubUp().catch(() => { running = false; L.status = 'err'; fire(); }); } else if (running) hubDown(); };
     check(); setInterval(check, 4000);
     setInterval(() => { if (running && Date.now() - lastSnapAt > 20000) snapNow(); }, 5000); // نبضة عشان الشاشات تعرف إن الكاشير شغال

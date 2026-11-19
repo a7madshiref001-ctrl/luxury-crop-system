@@ -108,6 +108,17 @@
     }
 
     var now = [];
+    // مين شغّال: الكاشير والباريستا والمطبخ (من آخر حفظ للكاشير)
+    var W = o.onduty;
+    if (W) {
+      var ROLE = { manager: "مدير", supervisor: "مشرف وردية", cashier: "كاشير", barista: "باريستا", chef: "شيف" };
+      var old = Date.now() - (W.at || 0) > 3 * 60000 ? " · حسب آخر حفظ " + clock(W.at) : "";
+      now.push(row("على الكاشير الآن", W.u ? (ROLE[W.role] || "") + " · من " + clock(W.since) + old : "الكاشير مقفول" + old, W.u ? esc(W.name) : "—"));
+      if (W.prep) ["bar", "kitchen"].forEach(function (st) {
+        var xs = W.prep.filter(function (x) { return x.st === st; });
+        now.push(row(STATION[st] + " الآن", xs.length ? xs.map(function (x) { return x.name + " من " + clock(x.since); }).join(" · ") + old : "لا أحد مسجّل على الشاشة" + old, xs.length ? esc(xs.map(function (x) { return String(x.name).split(" ")[0]; }).join("، ")) : "—"));
+      });
+    }
     if (o.shift) {
       now.push(row("الوردية مفتوحة", (o.shift.by || "") + " · من " + dateAr(o.shift.openedAt) + " " + clock(o.shift.openedAt), null, '<span class="lv-pill ready">مفتوحة</span>'));
       now.push(row("النقد المتوقع في الدرج", "افتتاحي " + money(o.shift.float) + " ر.س", money(o.shift.expected)));

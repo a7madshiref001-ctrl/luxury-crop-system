@@ -591,6 +591,23 @@ kbd{display:inline-flex;align-items:center;height:18px;padding:0 5px;border-radi
 .hubwho__t small{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hubwho.idle{background:var(--paper);border-color:var(--line)}
 .hubwho.off{background:var(--red-50);color:var(--red)}
+.duty{display:flex;align-items:center;gap:4px;height:38px;padding:0 6px;border-radius:12px;background:var(--card);border:1px solid var(--line);cursor:pointer;font:inherit;color:var(--ink);min-width:0;max-width:300px}
+.duty__s{display:inline-flex;align-items:center;gap:5px;padding:0 7px;height:28px;border-radius:9px;background:var(--go-50);min-width:0}
+.duty__s.off{background:transparent;color:var(--muted)}
+.duty__s svg{flex:none}
+.duty__nm{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:96px}
+.duty__n{display:none;font-size:12.5px}
+.duty-st{margin-top:12px}
+.duty-st:first-child{margin-top:0}
+.duty-st__h{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.duty-st__h .muted{margin-inline-start:auto;font-size:12px}
+@media (max-width:480px){ .top:has(.hubwho) .top__brand{display:none} }
+@media (max-width:900px){
+  .duty__nm{display:none}
+  .duty__n{display:inline}
+  .duty{padding:0 4px;height:36px}
+  .duty__s{padding:0 5px;gap:3px}
+}
 @media (max-width:640px){
   .hubwho{max-width:150px;padding:0 9px;height:36px}
   .hubwho__t small{font-size:9.5px}
