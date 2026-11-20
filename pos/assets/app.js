@@ -275,7 +275,9 @@
       D.mutate(() => D.log(me, 'login', `تسجيل دخول — كاشير 1 (${D.ROLES[u.role].ar})`), 'login');
       el.remove();
       if (prepSt(me)) kdsSt = prepSt(me);
-      const target = after && D.can(me, ROUTES.find((r) => r.id === after).perm) ? after : (prepSt(me) ? 'kds' : can(ROUTES.find((r) => r.id === route).perm) ? route : 'sell');
+      const ok = (r) => !!r && !!ROUTES.find((x) => x.id === r) && D.can(me, ROUTES.find((x) => x.id === r).perm);
+      // شاشة التحضير (Stations) للباريستا والشيف بس: الكاشير أو المدير اللي داخل بعد باريستا بيفتح على البيع، مش على شاشته
+      const target = prepSt(me) ? (ok(after) ? after : 'kds') : after !== 'kds' && ok(after) ? after : route !== 'kds' && ok(route) ? route : 'sell';
       go(target);
       D.toast(`أهلًا ${u.short}`, `تم الدخول كـ${D.ROLES[u.role].ar}`, { ic: 'user' });
       if (!D.REAL) setTimeout(wantGuide ? openGuide : nudge, 900);
