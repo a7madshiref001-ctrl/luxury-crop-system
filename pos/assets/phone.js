@@ -9,7 +9,7 @@
   // الوقت والتاريخ بتوقيت المحل (الرياض)، مش توقيت الجوال
   const clock = (t) => (t ? (D.time ? D.time(t) : new Date(t).toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Riyadh' })) : '—');
   const date = (t) => (t ? (D.dateAr ? D.dateAr(t) : new Date(t).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Riyadh' })) : '');
-  const ROLE = { manager: 'مدير', supervisor: 'مشرف وردية', cashier: 'كاشير' };
+  const ROLE = { manager: 'مدير', supervisor: 'مشرف وردية', cashier: 'كاشير', barista: 'باريستا', chef: 'شيف' };
   const PAY = { cash: 'كاش', mada: 'مدى', apple: 'Apple Pay', stc: 'STC Pay', online: 'مدفوع أونلاين', credit: 'رصيد استبدال' };
   const ST = { new: 'بانتظار الدفع', prep: 'قيد التحضير', ready: 'جاهز', done: 'تم التسليم', rejected: 'ملغي', cancelled: 'ملغي' };
   const STN = { bar: 'الباريستا', kitchen: 'المطبخ' };
@@ -58,7 +58,6 @@
       return `<div class="ph__r"><span>${STN[st]} الآن<small>${xs.length ? xs.map((x) => esc(x.name) + ' من ' + clock(x.since)).join(' · ') : 'لا أحد مسجّل على الشاشة'}</small></span><b>${xs.length ? esc(xs.map((x) => x.name.split(' ')[0]).join('، ')) : '—'}</b></div>`;
     };
     const duty = !w ? '' : `<div class="ph__c"><h3>On duty · مين شغّال الآن</h3>${who}${w.prep ? dutyRow('bar') + dutyRow('kitchen') : ''}</div>`;
-    const nowRows = shift;
     const sr = (a, b, sub, cls) => `<div class="ph__r${cls ? ' ' + cls : ''}"><span>${a}${sub ? `<small>${sub}</small>` : ''}</span><b>${b}</b></div>`;
     const shiftCard = !R ? '' : `<div class="ph__big ph__big--sh"><small>Shift report · كشف الوردية · ${R.close ? 'اتقفلت' + (R.z ? ' ' + esc(R.z) : '') : 'مفتوحة الآن'}${R.reg > 1 ? ' · كاشير ' + R.reg : ''}</small><b>${money(R.net)}</b>`
       + `<span>صافي مبيعات الوردية · ${esc(R.by || '—')} · من ${esc(date(R.open))} ${clock(R.open)}${R.close ? ' لحد ' + clock(R.close) : ''}</span>`
@@ -74,7 +73,7 @@
       + `<div class="ph__g"><div><b>${s.count}</b><small>فواتير اليوم</small></div><div><b>${money(avg)}</b><small>متوسط الفاتورة</small></div><div><b>${money(s.refunds)}</b><small>مرتجعات</small></div></div>`
       + shiftCard
       + `<div class="ph__c"><h3>Invoices · ${multi ? 'آخر الفواتير' : 'فواتير اليوم'}</h3>${inv || '<div class="ph__e">لا توجد فواتير اليوم حتى الآن.</div>'}${st.inv.length > 12 ? `<button class="btn btn--ghost ph__more" id="phMore">${all ? 'آخر 12 فاتورة فقط' : 'اعرض كل الفواتير (' + st.inv.length + ')'}</button>` : ''}</div>`
-      + `<div class="ph__c"><h3>Now · الوضع الحالي</h3>${nowRows}<div class="ph__r"><span>طلبات قيد التحضير</span><b>${s.open}</b></div>${s.unpaid ? `<div class="ph__r"><span>طلبات لم تُحصّل بعد</span><b>${s.unpaid}</b></div>` : ''}<div class="ph__r"><span>أصناف موقوفة</span><b>${st.soldOut}</b></div></div>`
+      + `<div class="ph__c"><h3>Now · الوضع الحالي</h3>${shift}<div class="ph__r"><span>طلبات قيد التحضير</span><b>${s.open}</b></div>${s.unpaid ? `<div class="ph__r"><span>طلبات لم تُحصّل بعد</span><b>${s.unpaid}</b></div>` : ''}<div class="ph__r"><span>أصناف موقوفة</span><b>${st.soldOut}</b></div></div>`
       + `<div class="ph__c"><h3>Payments · مدفوعات اليوم</h3>${by.length ? by.map((k) => `<div class="ph__r"><span>${esc(PAY[k] || k)}</span><b>${money(s.by[k])}</b></div>`).join('') : '<div class="ph__e">لا توجد مدفوعات اليوم.</div>'}</div>`
       + `<div class="ph__c"><h3>Top items · الأكثر مبيعًا</h3>${st.top.length ? st.top.map((x) => `<div class="ph__r"><span>${esc(x.n)}</span><b>×${x.q}</b></div>`).join('') : '<div class="ph__e">لسه مفيش مبيعات اليوم.</div>'}</div>`
       + '<p class="ph__f"><span lang="en">Built by ATHR</span></p>';

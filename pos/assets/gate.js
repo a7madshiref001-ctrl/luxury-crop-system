@@ -13,6 +13,8 @@
   const sid = () => { try { return sessionStorage.getItem(KEY) || ''; } catch (e) { return ''; } };
   // وقت دخول الموظف بيتحفظ مع اسمه، عشان الكاشير والجوال يعرضوا «شغال من الساعة كام»
   const put = (id) => { try { if (id) { if (sessionStorage.getItem(KEY) !== id || !sessionStorage.getItem(KEY + ':at')) sessionStorage.setItem(KEY + ':at', String(Date.now())); sessionStorage.setItem(KEY, id); } else { sessionStorage.removeItem(KEY); sessionStorage.removeItem(KEY + ':at'); } } catch (e) { /* */ } };
+  const LBASE = (D.CFG && D.CFG.key) || 'darj:v1';
+  const wasHub = () => { try { return !!localStorage.getItem(LBASE + ':linksec'); } catch (e) { return false; } };
   G.since = () => { try { return Number(sessionStorage.getItem(KEY + ':at')) || 0; } catch (e) { return 0; } };
 
   G.users = () => {
@@ -58,13 +60,13 @@
           <div class="pin" style="text-align:center;display:grid;gap:12px;justify-items:center">${D.icon(sat ? 'wifioff' : 'users')}
             <b>${sat ? 'بانتظار الكاشير' : setup ? 'النظام لم يُعدّ بعد' : 'لا يوجد موظفون لهذه الشاشة'}</b>
             <span class="muted" style="font-size:13px;line-height:1.7">${sat ? 'تظهر أسماء الموظفين هنا عند فتح الكاشير على جهازه واتصاله بالإنترنت.' : setup ? 'افتح الكاشير أولًا لإعداد المحل وإضافة الموظفين.' : 'أضف الموظفين وأدوارهم من الكاشير: Team ← Add staff.'}</span>
-            ${sat ? `<button class="btn btn--ghost btn--block" id="gSelf">${bi('This is the shop cashier', 'ده جهاز الكاشير — افتح الكاشير هنا')}</button>` : `<a class="btn btn--ink btn--block" href="app.html">${bi('Open cashier', 'افتح الكاشير')}</a>`}</div></div>`;
-        // جهاز الكاشير اتربط بالغلط كشاشة (لينك ربط اتفتح عليه): نفك ربطه ويفتح الكاشير
+            ${sat && wasHub() ? `<button class="btn btn--ghost btn--block" id="gSelf">${bi('This is the shop cashier', 'ده جهاز الكاشير — افتح الكاشير هنا')}</button>` : sat ? '' : `<a class="btn btn--ink btn--block" href="app.html">${bi('Open cashier', 'افتح الكاشير')}</a>`}</div></div>`;
+        // جهاز الكاشير اتربط بالغلط كشاشة (لينك ربط اتفتح عليه): نفك ربطه ويفتح الكاشير.
+        // الزرار بيظهر بس على جهاز اشتغل قبل كده ككاشير المحل (عنده مفتاح ربط خاص بيه)، مش على جوال أو آيباد مربوط
         const self = el.querySelector('#gSelf');
         if (self) self.addEventListener('click', () => {
           if (!confirm('الجهاز ده هو كاشير المحل؟ هيتفك ربطه كشاشة ويفتح الكاشير عليه. على الجوال أو الآيباد اختار «إلغاء».')) return;
-          const B = (D.CFG && D.CFG.key) || 'darj:v1';
-          try { localStorage.removeItem(B + ':pair'); localStorage.removeItem(B + ':snap'); } catch (e) { /* */ }
+          try { localStorage.removeItem(LBASE + ':pair'); localStorage.removeItem(LBASE + ':snap'); } catch (e) { /* */ }
           location.href = 'app.html';
         });
         return;
