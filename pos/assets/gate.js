@@ -58,7 +58,15 @@
           <div class="pin" style="text-align:center;display:grid;gap:12px;justify-items:center">${D.icon(sat ? 'wifioff' : 'users')}
             <b>${sat ? 'بانتظار الكاشير' : setup ? 'النظام لم يُعدّ بعد' : 'لا يوجد موظفون لهذه الشاشة'}</b>
             <span class="muted" style="font-size:13px;line-height:1.7">${sat ? 'تظهر أسماء الموظفين هنا عند فتح الكاشير على جهازه واتصاله بالإنترنت.' : setup ? 'افتح الكاشير أولًا لإعداد المحل وإضافة الموظفين.' : 'أضف الموظفين وأدوارهم من الكاشير: Team ← Add staff.'}</span>
-            ${sat ? '' : `<a class="btn btn--ink btn--block" href="app.html">${bi('Open cashier', 'افتح الكاشير')}</a>`}</div></div>`;
+            ${sat ? `<button class="btn btn--ghost btn--block" id="gSelf">${bi('This is the shop cashier', 'ده جهاز الكاشير — افتح الكاشير هنا')}</button>` : `<a class="btn btn--ink btn--block" href="app.html">${bi('Open cashier', 'افتح الكاشير')}</a>`}</div></div>`;
+        // جهاز الكاشير اتربط بالغلط كشاشة (لينك ربط اتفتح عليه): نفك ربطه ويفتح الكاشير
+        const self = el.querySelector('#gSelf');
+        if (self) self.addEventListener('click', () => {
+          if (!confirm('الجهاز ده هو كاشير المحل؟ هيتفك ربطه كشاشة ويفتح الكاشير عليه. على الجوال أو الآيباد اختار «إلغاء».')) return;
+          const B = (D.CFG && D.CFG.key) || 'darj:v1';
+          try { localStorage.removeItem(B + ':pair'); localStorage.removeItem(B + ':snap'); } catch (e) { /* */ }
+          location.href = 'app.html';
+        });
         return;
       }
       if (!users.some((u) => u.id === pick)) { pick = (users.find((u) => u.role === opt.prefer) || users[0]).id; pin = ''; }

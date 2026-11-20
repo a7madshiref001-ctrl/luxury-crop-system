@@ -32,7 +32,14 @@
       history.replaceState(null, '', location.pathname + location.search);
     }
   }
-  const pair = ROLE !== 'hub' ? readPair() : null;
+  let pair = ROLE !== 'hub' ? readPair() : null;
+  // لينك الربط اتفتح على جهاز الكاشير نفسه (بنفس مفتاحه): الجهاز ده هو الكاشير مش شاشة مربوطة،
+  // وإلا صفحة الدخول تفضل «بانتظار الكاشير» والكاشير مايفتحش
+  if (pair && pair.s) {
+    let own = '';
+    try { own = localStorage.getItem(BASE + ':linksec') || ''; } catch (e) { /* */ }
+    if (pair.s === own) { try { localStorage.removeItem(PKEY); localStorage.removeItem(BASE + ':snap'); } catch (e) { /* */ } pair = null; }
+  }
   if (pair && L.ok) { D.SAT = true; L.paired = true; D.STAFF = []; } // أسماء الموظفين بتيجي من الكاشير مع أول تحديث
   L.unpair = () => { try { localStorage.removeItem(PKEY); localStorage.removeItem(BASE + ':snap'); } catch (e) { /* */ } location.reload(); };
 
