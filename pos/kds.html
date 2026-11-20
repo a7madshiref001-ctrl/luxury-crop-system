@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<script src="assets/canonical.js?v=30"></script>
+<script src="assets/canonical.js?v=31"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#F4F0E8">
@@ -12,8 +12,8 @@
 <link rel="icon" href="assets/brand/logo-mark.png" type="image/png">
 <link rel="apple-touch-icon" href="assets/brand/logo-mark.png">
 
-<link rel="stylesheet" href="assets/darj.css?v=30">
-<link rel="stylesheet" href="assets/brand.css?v=30">
+<link rel="stylesheet" href="assets/darj.css?v=31">
+<link rel="stylesheet" href="assets/brand.css?v=31">
 <style>
   body{min-height:100dvh}
   .kbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line)}
@@ -30,7 +30,7 @@
   @media (max-width:900px){.kstat{display:none}}
   @media (max-width:640px){.clock{display:none}.lnk span{display:none}.lnk{width:30px;padding:0;justify-content:center}}
 </style>
-<script src="assets/pwa.js?v=30" defer></script>
+<script src="assets/pwa.js?v=31" defer></script>
 </head>
 <body>
 <header class="kbar">
@@ -48,16 +48,16 @@
   <span class="clock" id="clk"></span>
 </header>
 <main id="k"></main>
-<script src="assets/config.js?v=30"></script>
-<script src="assets/menu.js?v=30"></script>
-<script src="assets/livemenu.js?v=30"></script>
-<script src="assets/darj.js?v=30"></script>
-<script src="assets/kds.js?v=30"></script>
+<script src="assets/config.js?v=31"></script>
+<script src="assets/menu.js?v=31"></script>
+<script src="assets/livemenu.js?v=31"></script>
+<script src="assets/darj.js?v=31"></script>
+<script src="assets/kds.js?v=31"></script>
 <script>
   window.DARJ_ROLE = 'kds';
 </script>
-<script src="assets/link.js?v=30"></script>
-<script src="assets/gate.js?v=30"></script>
+<script src="assets/link.js?v=31"></script>
+<script src="assets/gate.js?v=31"></script>
 <script>
 (function () {
   const D = window.DARJ;
@@ -119,6 +119,18 @@
   }
   const lnk = () => { document.getElementById('lnk').innerHTML = L.pill(); };
   L.on(lnk); lnk();
+  // شاشة مربوطة وقعت من الكاشير: شريط واضح بدل ما الطلبات تبطّل توصل في صمت (الاتصال بيرجع لوحده، والزرار بيعيد تحميل الصفحة)
+  if (D.SAT) {
+    const bar = document.createElement('div');
+    bar.id = 'offBar'; bar.hidden = true; bar.setAttribute('role', 'alert');
+    bar.style.cssText = 'position:fixed;inset:auto 12px 12px 12px;z-index:60;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-radius:16px;background:var(--red,#c0392b);color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.18)';
+    bar.innerHTML = `${D.icon('wifioff')}<span style="flex:1;min-width:200px"><b>Not connected to the cashier</b><br><small>الشاشة مش متصلة بالكاشير، فالطلبات الجديدة مش بتوصل. بنحاول نوصل تاني…</small></span><button class="btn btn--sm" style="background:#fff;color:#111" data-re>Reconnect · إعادة الاتصال</button>`;
+    document.body.appendChild(bar);
+    bar.querySelector('[data-re]').addEventListener('click', () => location.reload());
+    let offAt = 0;
+    const chk = () => { const on = L.hubOnline(); if (on) offAt = 0; else if (!offAt) offAt = Date.now(); bar.hidden = on || Date.now() - offAt < 15000; };
+    L.on(chk); setInterval(chk, 3000); chk();
+  }
   D.on(stats); setInterval(stats, 5000); stats(); paintSnd();
   if (NEED && !me) ask(); else paintMe();
 })();

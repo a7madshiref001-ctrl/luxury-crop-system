@@ -86,24 +86,29 @@
       document.head.appendChild(sc);
     });
   }
-  let client = null, ch = null;
+  let client = null, ch = null, onMsgFn = null, stAt = Date.now(), healing = false;
   let skew = 0; // فرق ساعة الجهاز ده عن ساعة الكاشير (الشاشات بس) — عشان جهاز ساعته غلط مايترفضش
   async function connect(onMsg) {
     const lib = await sdk();
     client = client || lib.createClient(C.url, C.key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'darj-link-' + BASE } });
-    if (ch) { try { await client.removeChannel(ch); } catch (e) { /* */ } }
-    ch = client.channel(chName, { config: { broadcast: { self: false, ack: false }, presence: { key: DEV } } });
+    onMsgFn = onMsg;
+    const was = ch; ch = null;
+    if (was) { try { await client.removeChannel(was); } catch (e) { /* */ } }
+    const mine = (ch = client.channel(chName, { config: { broadcast: { self: false, ack: false }, presence: { key: DEV } } }));
     ch.on('broadcast', { event: 'm' }, async ({ payload }) => {
       const m = payload && payload.b ? await open(payload) : null;
       if (!m || m.from === DEV) return;
       if (m.t === 'big') { const whole = await joinBig(m); if (whole && whole.from !== DEV) onMsg(whole); } else onMsg(m);
     });
     ch.on('presence', { event: 'sync' }, () => {
+      if (mine !== ch) return;
       const st = ch.presenceState();
       L.peers = Object.keys(st).map((k) => Object.assign({ dev: k }, (st[k] || [])[0])).filter((p) => p.dev !== DEV);
       fire();
     });
     ch.subscribe((s) => {
+      if (mine !== ch) return; // قناة قديمة اتقفلت بعد ما اتعملت واحدة جديدة
+      stAt = Date.now();
       if (s === 'SUBSCRIBED') {
         L.status = 'on';
         ch.track(presence());
@@ -113,6 +118,35 @@
       fire();
     });
   }
+  /* الاتصال بيرجع لوحده: الآيباد لما الشاشة تنام، النت يقطع ثواني، أو التاب يروح في الخلفية — القناة كانت بتفضل
+     واقعة لحد ما حد يعمل ريفريش، فالطلب اللي اتقبل على الكاشير مايوصلش للباريستا. دلوقتي كل جهاز بيراقب قناته
+     ويعيد الاتصال، والشاشة اللي مابيوصلهاش حاجة من الكاشير بتعيد الاتصال بنفسها. */
+  function heal() {
+    if (!onMsgFn || healing || !L.ok) return;
+    if (ROLE === 'hub' && !running) return;
+    healing = true; L.status = 'connecting'; stAt = Date.now(); fire();
+    connect(onMsgFn).catch(() => { L.status = 'err'; stAt = Date.now(); fire(); }).then(() => { healing = false; });
+  }
+  L.heal = heal;
+  function watch() {
+    if (!onMsgFn || healing) return;
+    const age = Date.now() - stAt;
+    if ((L.status === 'err' || L.status === 'off') && age > 4000) { heal(); return; }
+    if (L.status === 'connecting' && age > 25000) { heal(); return; }
+    // شاشة مربوطة: القناة «شغالة» بس مفيش أي حاجة من الكاشير من دقيقة ونص (الكاشير بيبعت نبضة كل 20 ثانية)
+    if (ROLE !== 'hub' && L.status === 'on' && L.last && Date.now() - L.last > 90000 && age > 60000) heal();
+  }
+  setInterval(watch, 5000);
+  const wake = () => {
+    if (!onMsgFn) return;
+    if (L.status !== 'on') { heal(); return; }
+    if (ROLE !== 'hub') send({ t: 'hello' }); // رجعت من النوم: هات آخر حالة على طول
+    else snapSoon();
+  };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(wake, 300); });
+  window.addEventListener('online', () => setTimeout(wake, 800));
+  window.addEventListener('pageshow', (e) => { if (e.persisted) setTimeout(wake, 300); });
+
   async function raw(sealed) { try { const r = await ch.send({ type: 'broadcast', event: 'm', payload: sealed }); return r === 'ok'; } catch (e) { return false; } }
   async function send(obj) {
     if (!ch || L.status !== 'on') return false;
@@ -326,7 +360,8 @@
   L.phoneStats = phoneStats;
   L.hubWho = hubWho; // للاختبار ولأي شاشة محتاجة نفس الملخّص
   function snapNow() {
-    clearTimeout(snapT); snapT = 0; if (!hasPeers()) return; lastSnapAt = Date.now(); send({ t: 'snap', snap: snapshot() });
+    // اللقطة بتتبعت حتى لو قائمة الشاشات المتصلة فاضية: الشاشة اللي لسه راجعة من انقطاع ممكن ماتكونش ظهرت فيها لسه
+    clearTimeout(snapT); snapT = 0; if (!running) return; lastSnapAt = Date.now(); send({ t: 'snap', snap: snapshot() });
     if (L.peers.some((p) => p.role === 'phone')) { try { send({ t: 'stats', stats: phoneStats() }); } catch (e) { console.error(e); } }
     try { sendDelta(); } catch (e) { console.error(e); }
   }
@@ -375,7 +410,10 @@
     if (!authed(m.from)) { reply({ ok: 0, err: 'auth' }); return; }
     const bad = conflictOf(D.state(), m.d);
     if (bad) { reply({ ok: 0, err: 'conflict', k: bad }); return; }
+    const before = new Map((D.state().orders || []).filter((o) => o.ext).map((o) => [o.id, o.status]));
     D.mutate((st) => applyDiff(st, m.d, true), 'remote');
+    // قبول/تجهيز طلب موقع من الجوال: حالة الطلب عند العميل على الموقع تتحدّث زي ما بتتحدّث من الكاشير نفسه
+    if (D.hooks.status) (D.state().orders || []).forEach((o) => { if (o.ext && before.has(o.id) && before.get(o.id) !== o.status) { try { D.hooks.status(o, o.status); } catch (e) { /* */ } } });
     reply({ ok: 1, rev: D.state().rev || 0 });
     snapSoon();
   }
@@ -512,6 +550,7 @@
   /* =====================================================================
      REMOTE — الكاشير الكامل من الجوال (app.html على جهاز مربوط)
      ===================================================================== */
+  let snapRev = -1, revT = 0;
   let H = null, hR = -1, inflight = false, waitRev = -1, flushT = 0, askT = 0, denied = false, booted = false;
   function installR(pend) { const st = clone(H); if (pend) applyDiff(st, pend); st.rev = hR; D.satSet(st, 'remote'); if (pend) flushSoon(); }
   function askFull() { if (Date.now() - askT < 3000) return; askT = Date.now(); send({ t: 'full?' }); }
@@ -540,6 +579,12 @@
     }
     if (H && (m.t === 'snap' || m.t === 'cart')) { // بعد النسخة الكاملة: اللقطة الصغيرة للشاشات التانية = نبضة بس
       L.last = Date.now(); const was = L.live; L.live = true;
+      // النبضة فيها رقم نسخة الكاشير: لو نسختنا متأخرة (الكاشير اتقفل واتفتح فالفروقات وقفت) نطلب نسخة كاملة،
+      // وإلا الجوال يفضل شايف طلبات قديمة وطلب الموقع الجديد مايظهرش عليه
+      if (m.t === 'snap' && m.snap && typeof m.snap.rev === 'number') {
+        snapRev = m.snap.rev;
+        if (snapRev !== hR && !revT) revT = setTimeout(() => { revT = 0; if (H && !inflight && snapRev !== hR) askFull(); }, 2500);
+      }
       if (m.ts) { skew = m.ts - Date.now(); D.skew = skew; }
       if (!was) fire();
       return true;
