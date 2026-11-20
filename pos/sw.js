@@ -1,7 +1,7 @@
 /* Pages: network first, so the cashier always opens the newest version; the saved copy is used when the network is down or slow.
    Assets (scripts, styles, images, fonts): saved copy first, so a slow connection never holds the screen.
    Every script and style URL carries ?v=<version>, so a new release is a new URL and is fetched fresh. */
-const CACHE = 'lcpos-v25';
+const CACHE = 'lcpos-v26';
 const WAIT_MS = 2500;
 const ROOT = new URL(self.registration.scope).pathname;
 self.addEventListener('install', () => self.skipWaiting());
