@@ -240,9 +240,10 @@
   const toggleRow = (key, on, title, sub) => `<div class="set-row"><span><b>${title}</b><small>${sub}</small></span><button type="button" class="switch${on ? ' on' : ''}" data-f="${key}" role="switch" aria-checked="${on ? 'true' : 'false'}" aria-label="${esc(title)}"></button></div>`;
   const price = (v) => { const n = Number(v); return v !== '' && isFinite(n) && n >= 0 && n <= 10000; };
 
-  function editProduct(id) {
+  function editProduct(id, sec) {
     const cur = id ? data.products.find((x) => x.id === id) : null;
-    const p = cur || { id: 'p_' + uid(), name: '', description: '', section_id: secFilter || (data.sections[0] || {}).id || '', price: '', size_prices: null, image_url: '', is_active: true, sold_out: false, sort_order: (data.products.length + 1) * 10 };
+    const pickSec = [sec, secFilter].find((x) => x && data.sections.some((s) => s.id === x && s.is_active !== false)) || (data.sections.find((s) => s.is_active !== false) || data.sections[0] || {}).id || '';
+    const p = cur || { id: 'p_' + uid(), name: '', description: '', section_id: pickSec, price: '', size_prices: null, image_url: '', is_active: true, sold_out: false, sort_order: (data.products.length + 1) * 10 };
     const opts = data.sections.filter((s) => s.is_active !== false || s.id === p.section_id).map((s) => `<option value="${esc(s.id)}"${s.id === p.section_id ? ' selected' : ''}>${esc(s.title)}</option>`).join('');
     editor(cur ? bi('Edit item', 'تعديل الصنف') : bi('New item', 'صنف جديد'), 'يظهر في منيو الموقع وفي الكاشير',
       `${field('الاسم', 'name', p.name, { attrs: 'maxlength="120" required' })}${field('الوصف (اختياري)', 'description', p.description, { attrs: 'maxlength="500"' })}
@@ -454,6 +455,30 @@
     open();
   }
 
+  /* زر «Add item» في صفحة Menu بالكاشير: نفس نموذج الصنف بتاع صفحة Website، فيتكتب في منيو الموقع
+     والكاشير بيسحبه على طول. لو حساب الإدارة مش داخل على الجهاز، بيفتح صفحة Website عشان المدير يدخل مرة واحدة. */
+  async function addItem(c, sec) {
+    if (c) ctx = c;
+    if (!D.REAL) { D.toast('وضع التدريب لا يعدّل الموقع', 'اخرج من التدريب عشان تضيف صنف', { warn: 1, ic: 'lock' }); return; }
+    if (busy) return;
+    try {
+      const a = await resolve();
+      if (!a) {
+        tab = 'items';
+        D.toast('ادخل حساب الإدارة مرة واحدة', 'بعدها زر Add item يفتح من صفحة Menu على طول', { ic: 'lock', ms: 6000 });
+        if (c && c.go) c.go('site');
+        return;
+      }
+      await load(); // دايمًا أحدث أقسام وترتيب قبل الإضافة
+      gate = 'ready';
+      editProduct('', sec);
+    } catch (e) {
+      const denied = e && (e.code === '42501' || /permission|jwt/i.test(String(e.message || '')));
+      if (denied) { adm = null; data = null; gate = 'login'; tab = 'items'; if (c && c.go) { D.toast('ادخل حساب الإدارة', 'من صفحة Website', { ic: 'lock' }); c.go('site'); return; } }
+      fail(e);
+    }
+  }
+
   window.DARJ_PAGES = (window.DARJ_PAGES || []).concat([{ id: 'site', en: 'Website', ar: 'الموقع والأصناف', ic: 'globe', perm: 'settings', render }]);
-  window.DARJ_ADMIN = { test: /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? { state: () => ({ gate, tab, own, email: admEmail, data }), reset() { adm = null; saved = null; own = false; data = null; gate = 'checking'; } } : null };
+  window.DARJ_ADMIN = { addItem, test: /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? { state: () => ({ gate, tab, own, email: admEmail, data }), reset() { adm = null; saved = null; own = false; data = null; gate = 'checking'; } } : null };
 })();

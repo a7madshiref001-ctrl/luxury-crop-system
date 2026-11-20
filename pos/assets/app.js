@@ -1390,8 +1390,10 @@
     const s = S();
     const seeCost = can('cost') === 1, editPrice = can('price') === 1;
     const list = D.PRODUCTS.filter((p) => mcat === 'all' || p.cat === mcat);
-    view.innerHTML = `<div class="vh"><div><span class="label">Menu · ${D.PRODUCTS.length} items</span><h1>Menu</h1><p>${D.LIVE ? 'الأسعار والتوفّر. أي تعديل يظهر على الكاشير والكشك فورًا، ويُسجَّل اسم من عدّله. منيو الموقع يُعدَّل من لوحة الموقع.' : 'الأسعار والتوفّر. أي تعديل يصل للكاشير ولمنيو QR في نفس اللحظة، ويُسجَّل اسم من عدّله.'}</p></div>
-      ${editPrice ? '' : `<span class="pill">${I('lock', 'sm')} تعديل الأسعار للمدير فقط</span>`}</div>
+    // صنف جديد من الكاشير: نسخة العميل اللي فيها إدارة الموقع (DARJ_ADMIN) بتكتبه في منيو الموقع، والكاشير بيسحبه منه
+    const addSite = D.REAL && can('settings') === 1 && window.DARJ_ADMIN && typeof window.DARJ_ADMIN.addItem === 'function';
+    view.innerHTML = `<div class="vh"><div><span class="label">Menu · ${D.PRODUCTS.length} items</span><h1>Menu</h1><p>${addSite ? 'الأسعار والتوفّر. الصنف الجديد يتضاف للموقع والكاشير مع بعض، وأي تعديل يُسجَّل اسم من عدّله.' : D.LIVE ? 'الأسعار والتوفّر. أي تعديل يظهر على الكاشير والكشك فورًا، ويُسجَّل اسم من عدّله. منيو الموقع يُعدَّل من لوحة الموقع.' : 'الأسعار والتوفّر. أي تعديل يصل للكاشير ولمنيو QR في نفس اللحظة، ويُسجَّل اسم من عدّله.'}</p></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${editPrice ? '' : `<span class="pill">${I('lock', 'sm')} تعديل الأسعار للمدير فقط</span>`}${addSite ? `<button class="btn btn--ink" id="mAdd">${I('plus', 'sm')}${bi('Add item', 'صنف جديد')}</button>` : ''}</div></div>
       <div class="cats" style="padding:0 0 14px" id="mc"><button class="chip ${mcat === 'all' ? 'on' : ''}" data-c="all">${bi('All', 'الكل')}</button>${D.CATS.map((c) => `<button class="chip ${mcat === c.id ? 'on' : ''}" data-c="${c.id}">${bi(c.en, c.ar)}</button>`).join('')}</div>
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th>الصنف</th><th>القسم</th><th>${D.vatOn() ? 'السعر شامل الضريبة' : 'السعر'}</th>${seeCost ? '<th class="r">تكلفة الكوب</th><th class="r">هامش الربح</th>' : ''}<th>متاح</th></tr></thead><tbody>
       ${list.map((p) => {
@@ -1408,6 +1410,8 @@
           <td class="nw">${auto ? '<span class="pill pill--red">متوقف تلقائيًا — نفد المكوّن</span>' : `<button class="switch ${on ? 'on' : ''}" data-av="${p.id}" aria-label="متاح"></button>`}${D.REAL && can('stock') === 1 ? ` <button class="btn btn--soft btn--sm" data-rec="${p.id}">${bi('Recipe', Object.keys(p.r || {}).length ? 'الوصفة' : 'أضف وصفة')}</button>` : ''}</td></tr>`;
       }).join('')}</tbody></table></div>`;
     $('#mc', view).addEventListener('click', (e) => { const b = e.target.closest('[data-c]'); if (!b) return; mcat = b.dataset.c; renderMenu(view); });
+    const add = $('#mAdd', view);
+    if (add) add.addEventListener('click', () => { add.disabled = true; Promise.resolve(window.DARJ_ADMIN.addItem({ me: () => me, go }, mcat === 'all' ? '' : mcat)).catch(() => {}).then(() => { add.disabled = false; }); });
     $$('[data-rec]', view).forEach((b) => b.addEventListener('click', () => recipeForm(b.dataset.rec, () => renderMenu(view))));
     $$('[data-av]', view).forEach((b) => b.addEventListener('click', () => {
       const id = b.dataset.av; const p = D.prod(id);
